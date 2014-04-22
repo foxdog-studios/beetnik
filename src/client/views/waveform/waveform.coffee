@@ -72,7 +72,8 @@ updateAudioFromArrayBuffer = (arrayBuffer) ->
   Session.set 'hasPcmAudioData', false
   Session.set 'hasAudio', false
 
-  audioContext = getAudioContext()
+  unless audioContext?
+    audioContext = getAudioContext()
   audioSample = new ArrayBufferAudioSample(arrayBuffer)
   audioSample.loadAudio audioContext, ->
     Session.set 'hasAudio', true
