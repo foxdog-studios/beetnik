@@ -35,32 +35,42 @@ playTrack = ->
       timeline.render(0, SAMPLE_LENGTH_SECONDS)
   requestAnimationFrame(update)
 
-Template.waveform.rendered = ->
+updateAudioFromPcmData = (pcmAudioData) ->
+  Session.set 'hasPcmAudioData', true
+  waveformVisualisation = new WaveformVisualisation('#waveform', pcmAudioData)
+  waveformVisualisation.render()
+
+  beats = new SoundEnergyBeatDetector().detectBeats(pcmAudioData)
+
+  beatsVisualisation = new BeatsVisualisation('#beats')
+  beatsVisualisation.render(beats, SAMPLE_LENGTH_SECONDS)
+
+  beatVisualisation = new BeatVisualisation('#beat')
+
+updateAudioFromArrayBuffer = (arrayBuffer) ->
   Session.set 'hasPcmAudioData', false
   Session.set 'hasAudio', false
+
+  audioContext = getAudioContext()
+  audioSample = new ArrayBufferAudioSample(arrayBuffer)
+  audioSample.loadAudio audioContext, ->
+    Session.set 'hasAudio', true
+
+  pcmAudioSample = new ArrayBufferAudioSample(arrayBuffer)
+  pcmAudioGenerator = new PcmAudioGenerator()
+  pcmAudioGenerator.getPcmAudioData(pcmAudioSample, updateAudioFromPcmData)
+
+
+Template.waveform.rendered = ->
   timeline = new Timeline('#timeline')
-  new PcmAudioGenerator('sample.mp3').getPcmAudioData (pcmAudioData) ->
-    Session.set 'hasPcmAudioData', true
-    waveformVisualisation = new WaveformVisualisation('#waveform', pcmAudioData)
-    waveformVisualisation.render()
-
-    beats = new SoundEnergyBeatDetector().detectBeats(pcmAudioData)
-
-    beatsVisualisation = new BeatsVisualisation('#beats')
-    beatsVisualisation.render(beats, SAMPLE_LENGTH_SECONDS)
-
-    beatVisualisation = new BeatVisualisation('#beat')
-
-    audioContext = getAudioContext()
-    audioSample = new AudioSample audioContext, 'sample.mp3', (audioSample) ->
-      Session.set 'hasAudio', true
+  loadAudioFromUrl '/sample.mp3', updateAudioFromArrayBuffer
 
 Template.waveform.helpers
   hasPcmAudioData: ->
     Session.get 'hasPcmAudioData'
 
   disabled: ->
-    unless Session.get 'hasAudio'
+    unless Session.get('hasAudio') and Session.get('hasPcmAudioData')
       'disabled'
 
   playButtonText: ->
@@ -74,4 +84,16 @@ Template.waveform.events
     return unless audioSample?
     playTrack()
     Session.set 'playing', audioSample.playing
+
+  'change #file': (event) ->
+    file = event.target.files[0]
+
+    return unless file.type.match('audio.*')
+
+    reader = new FileReader()
+
+    reader.onload = (fileEvent) ->
+      updateAudioFromArrayBuffer(fileEvent.target.result)
+
+    reader.readAsArrayBuffer file
 

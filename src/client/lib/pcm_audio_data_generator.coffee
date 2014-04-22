@@ -9,15 +9,15 @@ class @PcmAudioGenerator
   SAMPLE_RATE = 44100
   LENGTH = SAMPLE_RATE * SAMPLE_LENGTH_SECONDS
 
-  constructor: (@url) ->
+  constructor: ->
     @context = getOfflineAudioContext(CHANNELS, LENGTH, SAMPLE_RATE)
 
-  getPcmAudioData: (callback) ->
+  getPcmAudioData: (audioSample, callback) ->
     renderAudioSampleOffline = (audioSample) =>
       @context.oncomplete = (event) ->
         # Only doing one channel, so index at zero
         callback event.renderedBuffer.getChannelData(0)
       audioSample.tryPlay()
       @context.startRendering()
-    new AudioSample @context, @url, renderAudioSampleOffline
+    audioSample.loadAudio @context, renderAudioSampleOffline
 

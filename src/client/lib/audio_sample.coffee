@@ -1,4 +1,4 @@
-@loadAudio = (url, callback) ->
+@loadAudioFromUrl = (url, callback) ->
   request = new XMLHttpRequest
   request.open 'GET', url, true
   request.responseType = 'arraybuffer'
@@ -6,25 +6,17 @@
     callback(request.response)
   request.send()
 
-class @AudioSample
-  constructor: (@_ctx, name, @callback, options) ->
-    @autoplay = options?.autoplay or false
-    @loop = options?.loop or false
-    @playing = false
-    @_loadAudio(name)
 
-  _loadAudio: (name) ->
-    loadAudio "/#{ name }", (response) =>
-      @_ctx.decodeAudioData response, (buffer) =>
-        console.log 'Loaded', name
-        @buffer = buffer
-        @tryPlay() if @autoplay
-        @callback(@)
+class @AbstractAudioSample
+  constructor:  ->
+    @playing = false
+
+  loadAudio: ->
+    throw 'Load Audio must be implemented by subclass'
 
   tryPlay: ->
     return unless @buffer?
     @source = @_ctx.createBufferSource()
-    @source.loop = @loop
     @source.buffer = @buffer
     @source.connect @_ctx.destination
     @source.start 0
@@ -34,4 +26,24 @@ class @AudioSample
     return unless @source?
     @source.stop 0
     @playing = false
+
+
+class @UrlAudioSample extends AbstractAudioSample
+  constructor: (@name) ->
+    super
+
+  loadAudio: (@_ctx, callback) ->
+    loadAudioFromUrl "/#{@name}", (response) =>
+      @_ctx.decodeAudioData response, (buffer) =>
+        @buffer = buffer
+        callback(@)
+
+class @ArrayBufferAudioSample extends AbstractAudioSample
+  constructor: (@arrayBuffer) ->
+    super
+
+  loadAudio: (@_ctx, callback) ->
+    @_ctx.decodeAudioData @arrayBuffer, (buffer) =>
+      @buffer = buffer
+      callback(@)
 
