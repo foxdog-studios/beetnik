@@ -6,12 +6,19 @@ audioContext = null
 audioSample = null
 timeline = null
 
+beats = null
+
+beatVisualisation = null
+
 playTrack = ->
+  beatsClone = beats.slice(0)
 
   if audioSample.playing
     return audioSample.stop()
   audioSample.tryPlay()
   startTime = audioContext.currentTime
+
+  handle = null
 
   update = ->
     playbackTime = audioContext.currentTime - startTime
@@ -20,6 +27,9 @@ playTrack = ->
       audioSample.stop()
       Session.set 'playing', audioSample.playing
     if audioSample.playing
+      if beatsClone.length > 0 and beatsClone[0] <= playbackTime
+        beatVisualisation.render(50)
+        beatsClone.splice(0, 1)
       requestAnimationFrame(update)
     else
       timeline.render(0, SAMPLE_LENGTH_SECONDS)
@@ -33,6 +43,13 @@ Template.waveform.rendered = ->
     Session.set 'hasPcmAudioData', true
     waveformVisualisation = new WaveformVisualisation('#waveform', pcmAudioData)
     waveformVisualisation.render()
+
+    beats = new SoundEnergyBeatDetector().detectBeats(pcmAudioData)
+
+    beatsVisualisation = new BeatsVisualisation('#beats')
+    beatsVisualisation.render(beats, SAMPLE_LENGTH_SECONDS)
+
+    beatVisualisation = new BeatVisualisation('#beat')
 
     audioContext = getAudioContext()
     audioSample = new AudioSample audioContext, 'sample.mp3', (audioSample) ->

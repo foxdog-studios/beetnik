@@ -2,14 +2,22 @@ body {
   margin: 0px;
 }
 
-#waveform, #timeline {
+#beat, #waveform, #beats, #timeline {
   position: absolute;
   width: 100%;
   height: 300px;
 }
 
+#beat {
+  z-index: -1;
+}
+
 #waveform {
   z-index: 0;
+}
+
+#beats {
+  z-index: 10;
 }
 
 #timeline {
