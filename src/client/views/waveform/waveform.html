@@ -1,0 +1,11 @@
+<template name="waveform">
+  <button name="play" {{disabled}}>{{playButtonText}}</button>
+  <div class="clearfix"></div>
+  <canvas id="waveform">
+  </canvas>
+  <canvas id="timeline">
+  </canvas>
+  {{#unless hasPcmAudioData}}
+    {{> spinner}}
+  {{/unless}}
+</template>
