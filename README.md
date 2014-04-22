@@ -10,8 +10,8 @@ Setup
 
 Install
 
-    - Meteor
-    - Meteorite
+- Meteor
+- Meteorite
 
 or Arch Linux users can use a script that does all this
 
