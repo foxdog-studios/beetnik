@@ -1,4 +1,5 @@
-THRESHOLD_CONSTANT = 1.3
+THRESHOLD_CONSTANT = 2.1
+VARIANCE_COEFFICIENT = 0
 SAMPLES_PER_INSTANT_ENERGY = 1024
 NUMBER_OF_PREVIOUS_SAMPLES = 43
 
@@ -56,6 +57,10 @@ updateBeats = ->
     pAEC = THRESHOLD_CONSTANT
     Session.set 'previousAverageEnergyCoefficient', pAEC
 
+  pEVC = Session.get 'previousEnergyVarianceCoefficient'
+  unless pEVC?
+    pEVC = VARIANCE_COEFFICIENT
+    Session.set 'previousEnergyVarianceCoefficient', pEVC
 
   sPIE = Session.get 'samplesPerInstantEnergy'
   unless sPIE
@@ -68,7 +73,8 @@ updateBeats = ->
     Session.set 'numberOfPreviousSamples', nOPS
 
   soundEnergyBeatDetector = new SoundEnergyBeatDetector()
-  beats = soundEnergyBeatDetector.detectBeats(pcmAudioData, pAEC, sPIE, nOPS)
+  beats = soundEnergyBeatDetector.detectBeats(pcmAudioData, pEVC, pAEC, sPIE,
+                                              nOPS)
   beatsVisualisation.render(beats, sampleLengthSeconds)
 
 updateAudioFromPcmData = (_pcmAudioData) ->
@@ -124,6 +130,9 @@ Template.waveform.helpers
   previousAverageEnergyCoefficient: ->
     Session.get 'previousAverageEnergyCoefficient'
 
+  previousEnergyVarianceCoefficient: ->
+    Session.get 'previousEnergyVarianceCoefficient'
+
   samplesPerInstantEnergy: ->
     Session.get 'samplesPerInstantEnergy'
 
@@ -156,6 +165,12 @@ Template.waveform.events
     Session.set 'previousAverageEnergyCoefficient', value
     updateBeats()
 
+
+  'change [name="previous-energy-variance-coefficient"]': (event) ->
+    value = $(event.target).val()
+    Session.set 'previousEnergyVarianceCoefficient', value
+    updateBeats()
+
   'change [name="samples-per-instant-energy"]': (event) ->
     value = $(event.target).val()
     Session.set 'samplesPerInstantEnergy', value
@@ -165,4 +180,5 @@ Template.waveform.events
     value = $(event.target).val()
     Session.set 'numberOfPreviousSamples', value
     updateBeats()
+
 

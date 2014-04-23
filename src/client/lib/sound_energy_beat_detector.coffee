@@ -3,7 +3,8 @@ class @SoundEnergyBeatDetector
 
   constructor: ->
 
-  detectBeats: (pcmAudioData, previousAverageEnergyCoefficient,
+  detectBeats: (pcmAudioData, previousEnergyVarianceCoefficient,
+                previousAverageEnergyCoefficient,
                 samplesPerInstantEnergy, numberOfPreviousSamples) ->
     beats = []
 
@@ -24,7 +25,18 @@ class @SoundEnergyBeatDetector
             previousSamplesSum += previousSample
           previousSamplesAverage = \
               previousSamplesSum / numberOfPreviousSamples
-          threshold = previousAverageEnergyCoefficient * previousSamplesAverage
+
+          sumOfDifferencesFromAverage = 0
+          for previousSample in previousSamples
+            sumOfDifferencesFromAverage += \
+              Math.pow(previousSample - previousSamplesAverage, 2)
+          previousSamplesVariance = \
+              sumOfDifferencesFromAverage / numberOfPreviousSamples
+
+          v = previousSamplesVariance * previousEnergyVarianceCoefficient
+          c = v + parseFloat(previousAverageEnergyCoefficient)
+          threshold = c * previousSamplesAverage
+
           if sampleSum > threshold
             # It's a beat!
             #

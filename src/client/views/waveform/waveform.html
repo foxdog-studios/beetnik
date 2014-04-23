@@ -10,6 +10,12 @@
     <p>This acts like a threshold, requiring a bigger change in energy to trigger a beat</p>
   </div>
   <div>
+    <input name="previous-energy-variance-coefficient" type="range" min="-0.01" max="0.01" step="0.0001" value="{{previousEnergyVarianceCoefficient}}">
+    <label>
+      {{previousEnergyVarianceCoefficient}} | Previous energy variance coefficient
+    </label>
+  </div>
+  <div>
     <input name="samples-per-instant-energy" type="range" min="1" max="4096" step="1" value="{{samplesPerInstantEnergy}}">
     <label>
       {{samplesPerInstantEnergy}} | Samples per instant energy
