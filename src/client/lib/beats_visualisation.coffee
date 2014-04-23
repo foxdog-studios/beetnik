@@ -7,11 +7,11 @@ class @BeatsVisualisation
   render: (beats, maxTime) ->
     @cvs.width = @cvs.width
 
-    @ctx.fillStyle = '#0000FF'
+    @ctx.fillStyle = '#FFFFFF'
 
     pixelsPerSecond = @cvs.width / maxTime
 
     for beat in beats
       x = Math.round(beat * pixelsPerSecond)
-      @ctx.fillRect(x, 0, 1, @cvs.height)
+      @ctx.fillRect(x, 0, 1, Math.round(@cvs.height / 12))
 

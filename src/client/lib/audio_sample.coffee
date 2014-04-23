@@ -14,12 +14,12 @@ class @AbstractAudioSample
   loadAudio: ->
     throw 'Load Audio must be implemented by subclass'
 
-  tryPlay: ->
+  tryPlay: (offset) ->
     return unless @buffer?
     @source = @_ctx.createBufferSource()
     @source.buffer = @buffer
     @source.connect @_ctx.destination
-    @source.start 0
+    @source.start 0, offset
     @playing = true
 
   stop: ->

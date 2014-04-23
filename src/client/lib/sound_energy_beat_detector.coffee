@@ -7,6 +7,9 @@ class @SoundEnergyBeatDetector
                 previousAverageEnergyCoefficient,
                 samplesPerInstantEnergy, numberOfPreviousSamples) ->
     beats = []
+    energies = []
+    averageEnergies = []
+    maxEnergy = 0
 
     previousSamples = []
 
@@ -17,6 +20,10 @@ class @SoundEnergyBeatDetector
     for pcm, i in pcmAudioData
       sampleSum += Math.pow(pcm, 2)
       if i % samplesPerInstantEnergy == 0
+        if sampleSum > maxEnergy
+          maxEnergy = sampleSum
+        currentTimeSeconds = i / SAMPLE_RATE
+        energies.push [currentTimeSeconds, sampleSum]
         if previousSamples.length < numberOfPreviousSamples
           previousSamples.push sampleSum
         else
@@ -37,11 +44,13 @@ class @SoundEnergyBeatDetector
           c = v + parseFloat(previousAverageEnergyCoefficient)
           threshold = c * previousSamplesAverage
 
+          averageEnergies.push [currentTimeSeconds, threshold]
+
           if sampleSum > threshold
             # It's a beat!
             #
             # Convert it to seconds and save it.
-            beats.push i / SAMPLE_RATE
+            beats.push currentTimeSeconds
 
           previousSamples.splice(previousSamplesIndex, 1, sampleSum)
 
@@ -49,5 +58,5 @@ class @SoundEnergyBeatDetector
         if previousSamplesIndex >= numberOfPreviousSamples
           previousSamplesIndex = 0
         sampleSum = 0
-    beats
+    [beats, energies, averageEnergies, maxEnergy]
 

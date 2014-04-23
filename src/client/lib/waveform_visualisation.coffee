@@ -5,7 +5,7 @@ class @WaveformVisualisation
     @cvs.width = $(@cvs).width()
 
   render: ->
-    @ctx.fillStyle = "#FF0000"
+    @ctx.fillStyle = "#F79273"
 
     x = 0
     intervals = Math.ceil(@pcmAudioData.length / @cvs.width)

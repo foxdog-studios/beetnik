@@ -1,4 +1,4 @@
-THRESHOLD_CONSTANT = 2.1
+THRESHOLD_CONSTANT = 1.5
 VARIANCE_COEFFICIENT = 0
 SAMPLES_PER_INSTANT_ENERGY = 1024
 NUMBER_OF_PREVIOUS_SAMPLES = 43
@@ -23,21 +23,27 @@ pcmAudioData = null
 
 beatVisualisation = null
 beatsVisualisation = null
+energiesVisualisation = null
+averageEnergiesVisualisation = null
 
 sampleLengthSeconds = 0
+trackStartTime = 0
 
 playTrack = ->
   beatsClone = beats.slice(0)
 
+  while beatsClone.length and beatsClone[0] < trackStartTime
+    beatsClone.splice(0, 1)
+
   if audioSample.playing
     return audioSample.stop()
-  audioSample.tryPlay()
+  audioSample.tryPlay(trackStartTime)
   startTime = audioContext.currentTime
 
   handle = null
 
   update = ->
-    playbackTime = audioContext.currentTime - startTime
+    playbackTime = audioContext.currentTime - startTime + trackStartTime
     timeline.render(playbackTime, sampleLengthSeconds)
     if playbackTime > sampleLengthSeconds
       audioSample.stop()
@@ -54,6 +60,13 @@ playTrack = ->
     else
       timeline.render(0, sampleLengthSeconds)
   requestAnimationFrame(update)
+
+updateSongPlace = (fractionThroughSong) ->
+  trackStartTime = sampleLengthSeconds * fractionThroughSong
+  timeline.render(trackStartTime, sampleLengthSeconds)
+  if audioSample.playing
+    return audioSample.stop()
+  Session.set 'playing', audioSample.playing
 
 updateBeats = ->
   pAEC = Session.get 'previousAverageEnergyCoefficient'
@@ -77,9 +90,13 @@ updateBeats = ->
     Session.set 'numberOfPreviousSamples', nOPS
 
   soundEnergyBeatDetector = new SoundEnergyBeatDetector()
-  beats = soundEnergyBeatDetector.detectBeats(pcmAudioData, pEVC, pAEC, sPIE,
+  [beats, energies, averageEnergies, maxEnergy] = \
+    soundEnergyBeatDetector.detectBeats(pcmAudioData, pEVC, pAEC, sPIE,
                                               nOPS)
   beatsVisualisation.render(beats, sampleLengthSeconds)
+  energiesVisualisation.render(energies, maxEnergy, sampleLengthSeconds)
+  averageEnergiesVisualisation.render(averageEnergies, maxEnergy,
+                                      sampleLengthSeconds)
 
 updateAudioFromPcmData = (_pcmAudioData) ->
   pcmAudioData = _pcmAudioData
@@ -114,6 +131,9 @@ updateAudioFromArrayBuffer = (arrayBuffer) ->
 Template.waveform.rendered = ->
   timeline = new Timeline('#timeline')
   beatsVisualisation = new BeatsVisualisation('#beats')
+  energiesVisualisation = new EnergiesVisualisation('#energies')
+  averageEnergiesVisualisation = \
+      new AverageEnergiesVisulisation('#average-energies')
   beatVisualisation = new BeatVisualisation('#beat')
   loadAudioFromUrl '/sample.mp3', updateAudioFromArrayBuffer
 
@@ -185,4 +205,9 @@ Template.waveform.events
     Session.set 'numberOfPreviousSamples', value
     updateBeats()
 
+  'click #timeline': (event) ->
+    $el = $(event.target)
+    parentOffset = $el.parent().offset()
+    relX = event.pageX - parentOffset.left
+    updateSongPlace(relX / $el.width())
 

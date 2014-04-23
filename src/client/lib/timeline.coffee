@@ -9,6 +9,6 @@ class @Timeline
     xPixels = Math.round(xPixelsPerSecond * time)
     # clear the canvas
     @cvs.width = @cvs.width
-    @ctx.fillStyle = "#00FF00"
+    @ctx.fillStyle = "#B1654B"
     @ctx.fillRect(xPixels, 0, 2, @cvs.height)
 

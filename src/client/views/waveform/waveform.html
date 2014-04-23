@@ -10,7 +10,7 @@
     <p>This acts like a threshold, requiring a bigger change in energy to trigger a beat</p>
   </div>
   <div>
-    <input name="previous-energy-variance-coefficient" type="range" min="-0.01" max="0.01" step="0.0001" value="{{previousEnergyVarianceCoefficient}}">
+    <input name="previous-energy-variance-coefficient" type="range" min="-0.001" max="0.001" step="0.0001" value="{{previousEnergyVarianceCoefficient}}">
     <label>
       {{previousEnergyVarianceCoefficient}} | Previous energy variance coefficient
     </label>
@@ -31,14 +31,12 @@
     <button name="play" {{disabled}}>{{playButtonText}}</button>
   </div>
   <div class="clearfix"></div>
-  <canvas id="beat">
-  </canvas>
-  <canvas id="waveform">
-  </canvas>
-  <canvas id="beats">
-  </canvas>
-  <canvas id="timeline">
-  </canvas>
+  <canvas id="beat"></canvas>
+  <canvas id="waveform"></canvas>
+  <canvas id="energies"></canvas>
+  <canvas id="average-energies"></canvas>
+  <canvas id="beats"></canvas>
+  <canvas id="timeline"></canvas>
   {{#unless hasPcmAudioData}}
     {{> spinner}}
   {{/unless}}

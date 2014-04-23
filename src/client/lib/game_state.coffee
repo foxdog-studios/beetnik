@@ -3,6 +3,7 @@ class @GameState
     @pubsub.on 'beat', (@onBeat) =>
 
   preload: ->
+    @game.load.image('person', '/person-11.png')
     @game.load.image('player', '/dog.png')
     @game.load.image('ground', '/brick-floor-top.png')
 
@@ -16,8 +17,24 @@ class @GameState
     @MAX_SPEED = 250 # pixels/second
     @ACCELERATION = 600 # pixels/second/second
     @DRAG = 400 # pixels/second
-    @GRAVITY = 980 * 2 # pixels/second/second
-    @JUMP_SPEED = -300 # pixels/second (negative y is up)
+    @GRAVITY = 980 # pixels/second/second
+    @JUMP_SPEED = -100 # pixels/second (negative y is up)
+
+    numberOfCrowdMembers = 10
+    @crowdMembers = []
+    # Create crowd
+    for i in [0..numberOfCrowdMembers]
+      crowdMember = @game.add.sprite(
+        @game.width/numberOfCrowdMembers * i,
+        @game.height - 64,
+        'person'
+      )
+      @game.physics.enable(crowdMember, Phaser.Physics.ARCADE)
+      crowdMember.body.maxVelocity.setTo(@MAX_SPEED, @MAX_SPEED * 10)
+      crowdMember.body.drag.setTo(@DRAG, 0)
+
+      crowdMember.body.collideWorldBounds = true
+      @crowdMembers.push crowdMember
 
     # Create a player sprite
     @player = @game.add.sprite(@game.width/2, @game.height - 64, 'player')
@@ -75,6 +92,10 @@ class @GameState
     # Collide the player with the ground
     @game.physics.arcade.collide(@player, @ground)
 
+    for crowdMember in @crowdMembers
+      @game.physics.arcade.collide(crowdMember, @ground)
+      @game.physics.arcade.collide(crowdMember, @player)
+
     if @input.keyboard.isDown(Phaser.Keyboard.LEFT)
       # If the LEFT key is down, set the player velocity to move left
       @player.body.acceleration.x = -@ACCELERATION
@@ -87,8 +108,11 @@ class @GameState
     # Set a iable that is true when the player is touching the ground
     onTheGround = @player.body.touching.down
 
-    if onTheGround and @onBeat
+    if onTheGround and @input.keyboard.justPressed(Phaser.Keyboard.UP)
       # Jump when the player is touching the ground and the up arrow is pressed
       @player.body.velocity.y = @JUMP_SPEED
-      @onBeat = false
+
+    for crowdMember in @crowdMembers
+      if crowdMember.body.touching.down and @onBeat
+        crowdMember.body.velocity.y = @JUMP_SPEED
 
