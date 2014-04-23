@@ -44,8 +44,12 @@ playTrack = ->
       Session.set 'playing', audioSample.playing
     if audioSample.playing
       if beatsClone.length > 0 and beatsClone[0] <= playbackTime
+        #Beat!
+        gamePubSub.trigger 'beat', true
         beatVisualisation.render(50)
         beatsClone.splice(0, 1)
+      else
+        gamePubSub.trigger 'beat', false
       requestAnimationFrame(update)
     else
       timeline.render(0, sampleLengthSeconds)

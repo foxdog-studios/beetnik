@@ -1,0 +1,2 @@
+@gamePubSub = new Pubsub
+
