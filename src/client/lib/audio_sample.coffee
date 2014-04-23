@@ -28,16 +28,6 @@ class @AbstractAudioSample
     @playing = false
 
 
-class @UrlAudioSample extends AbstractAudioSample
-  constructor: (@name) ->
-    super
-
-  loadAudio: (@_ctx, callback) ->
-    loadAudioFromUrl "/#{@name}", (response) =>
-      @_ctx.decodeAudioData response, (buffer) =>
-        @buffer = buffer
-        callback(@)
-
 class @ArrayBufferAudioSample extends AbstractAudioSample
   constructor: (@arrayBuffer) ->
     super

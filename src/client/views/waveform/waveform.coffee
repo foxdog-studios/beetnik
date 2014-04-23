@@ -2,9 +2,16 @@ THRESHOLD_CONSTANT = 1.3
 SAMPLES_PER_INSTANT_ENERGY = 1024
 NUMBER_OF_PREVIOUS_SAMPLES = 43
 
+CHANNELS = 1
+SAMPLE_RATE = 44100
+
 getAudioContext = ->
   AudioContext = AudioContext or webkitAudioContext
   new AudioContext()
+
+getOfflineAudioContext = (channels, length, sampleRate) ->
+  OfflineAudioContext = OfflineAudioContext or webkitOfflineAudioContext
+  new OfflineAudioContext(channels, length, sampleRate)
 
 audioContext = null
 audioSample = null
@@ -15,6 +22,8 @@ pcmAudioData = null
 
 beatVisualisation = null
 beatsVisualisation = null
+
+sampleLengthSeconds = 0
 
 playTrack = ->
   beatsClone = beats.slice(0)
@@ -28,8 +37,8 @@ playTrack = ->
 
   update = ->
     playbackTime = audioContext.currentTime - startTime
-    timeline.render(playbackTime, SAMPLE_LENGTH_SECONDS)
-    if playbackTime > SAMPLE_LENGTH_SECONDS
+    timeline.render(playbackTime, sampleLengthSeconds)
+    if playbackTime > sampleLengthSeconds
       audioSample.stop()
       Session.set 'playing', audioSample.playing
     if audioSample.playing
@@ -38,7 +47,7 @@ playTrack = ->
         beatsClone.splice(0, 1)
       requestAnimationFrame(update)
     else
-      timeline.render(0, SAMPLE_LENGTH_SECONDS)
+      timeline.render(0, sampleLengthSeconds)
   requestAnimationFrame(update)
 
 updateBeats = ->
@@ -46,6 +55,7 @@ updateBeats = ->
   unless pAEC?
     pAEC = THRESHOLD_CONSTANT
     Session.set 'previousAverageEnergyCoefficient', pAEC
+
 
   sPIE = Session.get 'samplesPerInstantEnergy'
   unless sPIE
@@ -59,7 +69,7 @@ updateBeats = ->
 
   soundEnergyBeatDetector = new SoundEnergyBeatDetector()
   beats = soundEnergyBeatDetector.detectBeats(pcmAudioData, pAEC, sPIE, nOPS)
-  beatsVisualisation.render(beats, SAMPLE_LENGTH_SECONDS)
+  beatsVisualisation.render(beats, sampleLengthSeconds)
 
 updateAudioFromPcmData = (_pcmAudioData) ->
   pcmAudioData = _pcmAudioData
@@ -75,12 +85,21 @@ updateAudioFromArrayBuffer = (arrayBuffer) ->
   unless audioContext?
     audioContext = getAudioContext()
   audioSample = new ArrayBufferAudioSample(arrayBuffer)
-  audioSample.loadAudio audioContext, ->
+
+  # XXX: To know the correct length we need to make the offline audio context,
+  # we need to decode the audio, using an AudioContext (which we also use for
+  # playback).
+  audioSample.loadAudio audioContext, (audioSample) ->
     Session.set 'hasAudio', true
 
-  pcmAudioSample = new ArrayBufferAudioSample(arrayBuffer)
-  pcmAudioGenerator = new PcmAudioGenerator()
-  pcmAudioGenerator.getPcmAudioData(pcmAudioSample, updateAudioFromPcmData)
+    pcmAudioSample = new ArrayBufferAudioSample(arrayBuffer)
+    length = audioSample.buffer.length
+    sampleLengthSeconds = length / SAMPLE_RATE
+    offlineAudioContext = \
+        getOfflineAudioContext(CHANNELS, length, SAMPLE_RATE)
+    pcmAudioGenerator = new PcmAudioGenerator()
+    pcmAudioGenerator.getPcmAudioData(offlineAudioContext,
+                                      pcmAudioSample, updateAudioFromPcmData)
 
 Template.waveform.rendered = ->
   timeline = new Timeline('#timeline')
@@ -120,7 +139,7 @@ Template.waveform.events
   'change #file': (event) ->
     file = event.target.files[0]
 
-    return unless file.type.match('audio.*')
+    return unless file?.type.match('audio.*')
 
     reader = new FileReader()
 
