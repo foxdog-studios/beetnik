@@ -14,11 +14,15 @@ class @AbstractAudioSample
   loadAudio: ->
     throw 'Load Audio must be implemented by subclass'
 
-  tryPlay: (offset) ->
+  tryPlay: (offset, gain) ->
     return unless @buffer?
     @source = @_ctx.createBufferSource()
     @source.buffer = @buffer
-    @source.connect @_ctx.destination
+    gainNode = @_ctx.createGain()
+    if gain?
+      gainNode.gain.value = gain
+    @source.connect gainNode
+    gainNode.connect @_ctx.destination
     @source.start 0, offset
     @playing = true
 
@@ -35,5 +39,6 @@ class @ArrayBufferAudioSample extends AbstractAudioSample
   loadAudio: (@_ctx, callback) ->
     @_ctx.decodeAudioData @arrayBuffer, (buffer) =>
       @buffer = buffer
-      callback(@)
+      if callback?
+        callback(@)
 

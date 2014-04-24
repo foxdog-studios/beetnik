@@ -6,21 +6,26 @@ NUMBER_OF_PREVIOUS_SAMPLES = 43
 CHANNELS = 1
 SAMPLE_RATE = 44100
 
+audioContext = null
+
 getAudioContext = ->
   AudioContext = AudioContext or webkitAudioContext
-  new AudioContext()
+  unless audioContext?
+    audioContext = new AudioContext()
+  audioContext
 
 getOfflineAudioContext = (channels, length, sampleRate) ->
   OfflineAudioContext = OfflineAudioContext or webkitOfflineAudioContext
   new OfflineAudioContext(channels, length, sampleRate)
 
-audioContext = null
 audioSample = null
 timeline = null
 
 beats = null
 maximumEnergies = null
 pcmAudioData = null
+
+metronomeAudioSample = null
 
 beatVisualisation = null
 beatsVisualisation = null
@@ -39,7 +44,7 @@ playTrack = ->
 
   if audioSample.playing
     return audioSample.stop()
-  audioSample.tryPlay(trackStartTime)
+  audioSample.tryPlay(trackStartTime, 0.3)
   startTime = audioContext.currentTime
 
   handle = null
@@ -53,6 +58,8 @@ playTrack = ->
     if audioSample.playing
       if beatsClone.length > 0 and beatsClone[0] <= playbackTime
         #Beat!
+        if metronomeAudioSample?
+          metronomeAudioSample.tryPlay()
         if beatsClone.length > 2
           beatTime = beatsClone[1] - beatsClone[0]
         gamePubSub.trigger 'beat', true, beatTime
@@ -116,8 +123,7 @@ updateAudioFromArrayBuffer = (arrayBuffer) ->
   Session.set 'hasPcmAudioData', false
   Session.set 'hasAudio', false
 
-  unless audioContext?
-    audioContext = getAudioContext()
+  audioContext = getAudioContext()
   audioSample = new ArrayBufferAudioSample(arrayBuffer)
 
   # XXX: To know the correct length we need to make the offline audio context,
@@ -144,6 +150,11 @@ Template.waveform.rendered = ->
   beatVisualisation = new BeatVisualisation('#beat')
   convolutionVisualisation = new ConvolutionVisualisation('#convolution')
   loadAudioFromUrl '/selfie-short.mp3', updateAudioFromArrayBuffer
+  loadAudioFromUrl '/metronome.wav', (arrayBuffer) ->
+    audioContext = getAudioContext()
+    metronomeAudioSample = new ArrayBufferAudioSample(arrayBuffer)
+    metronomeAudioSample.loadAudio audioContext
+
 
 Template.waveform.helpers
   hasPcmAudioData: ->
