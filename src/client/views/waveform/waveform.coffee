@@ -19,12 +19,14 @@ audioSample = null
 timeline = null
 
 beats = null
+maximumEnergies = null
 pcmAudioData = null
 
 beatVisualisation = null
 beatsVisualisation = null
 energiesVisualisation = null
 averageEnergiesVisualisation = null
+convolutionVisualisation = null
 
 sampleLengthSeconds = 0
 trackStartTime = 0
@@ -90,13 +92,16 @@ updateBeats = ->
     Session.set 'numberOfPreviousSamples', nOPS
 
   soundEnergyBeatDetector = new SoundEnergyBeatDetector()
-  [beats, energies, averageEnergies, maxEnergy] = \
+  [maximumEnergies, energies, averageEnergies, maxEnergy, bpm, convolution,
+   beats] = \
     soundEnergyBeatDetector.detectBeats(pcmAudioData, pEVC, pAEC, sPIE,
                                               nOPS)
-  beatsVisualisation.render(beats, sampleLengthSeconds)
+  Session.set 'bpm', bpm
+  beatsVisualisation.render(maximumEnergies, sampleLengthSeconds)
   energiesVisualisation.render(energies, maxEnergy, sampleLengthSeconds)
   averageEnergiesVisualisation.render(averageEnergies, maxEnergy,
                                       sampleLengthSeconds)
+  convolutionVisualisation.render(convolution, sampleLengthSeconds)
 
 updateAudioFromPcmData = (_pcmAudioData) ->
   pcmAudioData = _pcmAudioData
@@ -135,7 +140,8 @@ Template.waveform.rendered = ->
   averageEnergiesVisualisation = \
       new AverageEnergiesVisulisation('#average-energies')
   beatVisualisation = new BeatVisualisation('#beat')
-  loadAudioFromUrl '/sample.mp3', updateAudioFromArrayBuffer
+  convolutionVisualisation = new ConvolutionVisualisation('#convolution')
+  loadAudioFromUrl '/selfie-short.mp3', updateAudioFromArrayBuffer
 
 Template.waveform.helpers
   hasPcmAudioData: ->
@@ -162,6 +168,11 @@ Template.waveform.helpers
 
   numberOfPreviousSamples: ->
     Session.get 'numberOfPreviousSamples'
+
+  bpm: ->
+    bpm = Session.get 'bpm'
+    '?' unless bpm?
+    bpm.toFixed(2)
 
 Template.waveform.events
   'click [name="play"]': (event) ->

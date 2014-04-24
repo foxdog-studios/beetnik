@@ -29,12 +29,14 @@
   </div>
   <div>
     <button name="play" {{disabled}}>{{playButtonText}}</button>
+    {{bpm}} bpm
   </div>
   <div class="clearfix"></div>
   <canvas id="beat"></canvas>
   <canvas id="waveform"></canvas>
   <canvas id="energies"></canvas>
   <canvas id="average-energies"></canvas>
+  <canvas id="convolution"></canvas>
   <canvas id="beats"></canvas>
   <canvas id="timeline"></canvas>
   {{#unless hasPcmAudioData}}
