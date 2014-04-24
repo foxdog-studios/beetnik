@@ -53,7 +53,9 @@ playTrack = ->
     if audioSample.playing
       if beatsClone.length > 0 and beatsClone[0] <= playbackTime
         #Beat!
-        gamePubSub.trigger 'beat', true
+        if beatsClone.length > 2
+          beatTime = beatsClone[1] - beatsClone[0]
+        gamePubSub.trigger 'beat', true, beatTime
         beatVisualisation.render(50)
         beatsClone.splice(0, 1)
       else
@@ -171,7 +173,7 @@ Template.waveform.helpers
 
   bpm: ->
     bpm = Session.get 'bpm'
-    '?' unless bpm?
+    return '?' unless bpm?
     bpm.toFixed(2)
 
 Template.waveform.events

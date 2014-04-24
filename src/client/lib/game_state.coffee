@@ -1,6 +1,6 @@
 class @GameState
   constructor: (@game, @pubsub) ->
-    @pubsub.on 'beat', (@onBeat) =>
+    @pubsub.on 'beat', (@onBeat, @beatTime) =>
 
   preload: ->
     @game.load.image('person', '/person-11.png')
@@ -18,7 +18,7 @@ class @GameState
     @ACCELERATION = 600 # pixels/second/second
     @DRAG = 400 # pixels/second
     @GRAVITY = 980 # pixels/second/second
-    @JUMP_SPEED = -100 # pixels/second (negative y is up)
+    @JUMP_SPEED = -200 # pixels/second (negative y is up)
 
     numberOfCrowdMembers = 10
     @crowdMembers = []
@@ -26,7 +26,7 @@ class @GameState
     for i in [0..numberOfCrowdMembers]
       crowdMember = @game.add.sprite(
         @game.width/numberOfCrowdMembers * i,
-        @game.height - 64,
+        @game.height - 32,
         'person'
       )
       @game.physics.enable(crowdMember, Phaser.Physics.ARCADE)
@@ -37,7 +37,7 @@ class @GameState
       @crowdMembers.push crowdMember
 
     # Create a player sprite
-    @player = @game.add.sprite(@game.width/2, @game.height - 64, 'player')
+    @player = @game.add.sprite(@game.width/2, @game.height - 32, 'player')
 
     # Enable physics on the player
     @game.physics.enable(@player, Phaser.Physics.ARCADE)
@@ -115,4 +115,13 @@ class @GameState
     for crowdMember in @crowdMembers
       if crowdMember.body.touching.down and @onBeat
         crowdMember.body.velocity.y = @JUMP_SPEED
+        continue
+        continue unless @beatTime
+        originalY = crowdMember.y
+        tweenTo = originalY - 20
+        time = (@beatTime * 1000 / 2) - 100
+        tween = @game.add.tween(crowdMember).to(y: tweenTo,
+          time, Phaser.Easing.Linear.None)
+        tween.to(y: originalY, time, Phaser.Easing.Linear.None)
+        tween.start()
 
