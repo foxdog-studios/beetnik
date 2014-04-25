@@ -197,13 +197,21 @@ Template.waveform.helpers
       zoom = 1
     zoom
 
+  advancedInterface: ->
+    Session.get 'advancedInterface'
+
+  advancedInterfaceChecked: ->
+    'checked' if Session.get 'advancedInterface'
+
 Template.waveform.events
   'click [name="play"]': (event) ->
+    event.preventDefault()
     return unless audioSample?
     playTrack()
     Session.set 'playing', audioSample.playing
 
   'change #file': (event) ->
+    event.preventDefault()
     file = event.target.files[0]
 
     return unless file?.type.match('audio.*')
@@ -219,36 +227,47 @@ Template.waveform.events
     reader.readAsArrayBuffer file
 
   'change [name="previous-average-energy-coefficient"]': (event) ->
+    event.preventDefault()
     value = $(event.target).val()
     Session.set 'previousAverageEnergyCoefficient', value
     updateBeats()
 
   'change [name="previous-energy-variance-coefficient"]': (event) ->
+    event.preventDefault()
     value = $(event.target).val()
     Session.set 'previousEnergyVarianceCoefficient', value
     updateBeats()
 
   'change [name="samples-per-instant-energy"]': (event) ->
+    event.preventDefault()
     value = $(event.target).val()
     Session.set 'samplesPerInstantEnergy', value
     updateBeats()
 
   'change [name="number-of-previous-samples"]': (event) ->
+    event.preventDefault()
     value = $(event.target).val()
     Session.set 'numberOfPreviousSamples', value
     updateBeats()
 
   'click #timeline': (event) ->
+    event.preventDefault()
     $el = $(event.target)
     parentOffset = $el.parent().offset()
     relX = event.pageX - parentOffset.left
     updateSongPlace(relX / $el.width())
 
   'change [name="click"]': (event) ->
+    event.preventDefault()
     value = $(event.target).prop('checked')
     Session.set 'click', value
 
+  'change [name="advanced"]': (event) ->
+    event.preventDefault()
+    Session.set 'advancedInterface', $(event.target).prop('checked')
+
   'change [name="zoom"]': (event) ->
+    event.preventDefault()
     value = $(event.target).val()
     Session.set 'zoom', value
     window = (sampleLengthSeconds / value) / 2

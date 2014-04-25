@@ -2,7 +2,8 @@
   "packages": {
     "iron-router": {},
     "bower": {},
-    "spin": {}
+    "spin": {},
+    "bootstrap-3": {}
   },
   "bower": {
     "phaser": {
