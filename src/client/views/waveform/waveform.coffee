@@ -44,7 +44,11 @@ playTrack = ->
 
   if audioSample.playing
     return audioSample.stop()
-  audioSample.tryPlay(trackStartTime, 0.3)
+  gain = if Session.get 'click'
+    0.3
+  else
+    1
+  audioSample.tryPlay(trackStartTime, gain)
   startTime = audioContext.currentTime
 
   handle = null
@@ -55,10 +59,11 @@ playTrack = ->
     if playbackTime > sampleLengthSeconds
       audioSample.stop()
       Session.set 'playing', audioSample.playing
+      timeline.render(trackStartTime, sampleLengthSeconds)
     if audioSample.playing
       if beatsClone.length > 0 and beatsClone[0] <= playbackTime
         #Beat!
-        if metronomeAudioSample?
+        if metronomeAudioSample? and Session.get('click')
           metronomeAudioSample.tryPlay()
         if beatsClone.length > 2
           beatTime = beatsClone[1] - beatsClone[0]
@@ -68,16 +73,14 @@ playTrack = ->
       else
         gamePubSub.trigger 'beat', false
       requestAnimationFrame(update)
-    else
-      timeline.render(0, sampleLengthSeconds)
   requestAnimationFrame(update)
 
 updateSongPlace = (fractionThroughSong) ->
   trackStartTime = sampleLengthSeconds * fractionThroughSong
   timeline.render(trackStartTime, sampleLengthSeconds)
   if audioSample.playing
-    return audioSample.stop()
-  Session.set 'playing', audioSample.playing
+    audioSample.stop()
+    Session.set 'playing', audioSample.playing
 
 updateBeats = ->
   pAEC = Session.get 'previousAverageEnergyCoefficient'
@@ -187,6 +190,9 @@ Template.waveform.helpers
     return '?' unless bpm?
     bpm.toFixed(2)
 
+  clickChecked: ->
+    'checked' if Session.get 'click'
+
 Template.waveform.events
   'click [name="play"]': (event) ->
     return unless audioSample?
@@ -234,4 +240,8 @@ Template.waveform.events
     parentOffset = $el.parent().offset()
     relX = event.pageX - parentOffset.left
     updateSongPlace(relX / $el.width())
+
+  'change [name="click"]': (event) ->
+    value = $(event.target).prop('checked')
+    Session.set 'click', value
 

@@ -6,7 +6,7 @@ class @ConvolutionVisualisation
 
   render: (convolution, sampleLengthSeconds) ->
     @cvs.width = @cvs.width
-    @ctx.fillStyle = 'rgba(0, 255, 255, 0.4)'
+    @ctx.fillStyle = 'rgba(0, 255, 255, 1)'
     xInterval = @cvs.width / sampleLengthSeconds
     for [i, conv] in convolution
       @ctx.fillRect(Math.round(i * xInterval), @cvs.height, 1,

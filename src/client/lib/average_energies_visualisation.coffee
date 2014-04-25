@@ -6,7 +6,7 @@ class @AverageEnergiesVisulisation
 
   render: (averageEnergies, sPIE, sampleLengthSeconds) ->
     @cvs.width = @cvs.width
-    @ctx.fillStyle = 'rgba(255, 0, 255, 0.4)'
+    @ctx.fillStyle = 'rgba(255, 0, 255, 1)'
     xInterval = @cvs.width / sampleLengthSeconds
     yInterval = @cvs.height / sPIE
     for [i, energy] in averageEnergies
