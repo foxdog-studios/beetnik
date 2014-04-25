@@ -9,35 +9,36 @@ SAMPLE_RATE = 44100
 audioContext = null
 
 getAudioContext = ->
-  AudioContext = AudioContext or webkitAudioContext
+  AudioContext = window.AudioContext or window.webkitAudioContext
   unless audioContext?
     audioContext = new AudioContext()
   audioContext
 
 getOfflineAudioContext = (channels, length, sampleRate) ->
-  OfflineAudioContext = OfflineAudioContext or webkitOfflineAudioContext
+  OfflineAudioContext = \
+      window.OfflineAudioContext or window.webkitOfflineAudioContext
   new OfflineAudioContext(channels, length, sampleRate)
 
 audioSample = null
 timeline = null
 
+beatDetector = null
 beats = null
-maximumEnergies = null
 pcmAudioData = null
 
 metronomeAudioSample = null
 
 beatVisualisation = null
-beatsVisualisation = null
-energiesVisualisation = null
-averageEnergiesVisualisation = null
-convolutionVisualisation = null
+beatDetectorVisualisation = null
 
 sampleLengthSeconds = 0
 trackStartTime = 0
 
+windowStart = 0
+windowEnd = null
+
 playTrack = ->
-  beatsClone = beats.slice(0)
+  beatsClone = beatDetector.beats.slice(0)
 
   while beatsClone.length and beatsClone[0] < trackStartTime
     beatsClone.splice(0, 1)
@@ -55,12 +56,12 @@ playTrack = ->
 
   update = ->
     playbackTime = audioContext.currentTime - startTime + trackStartTime
-    timeline.render(playbackTime, sampleLengthSeconds)
     if playbackTime > sampleLengthSeconds
       audioSample.stop()
       Session.set 'playing', audioSample.playing
-      timeline.render(trackStartTime, sampleLengthSeconds)
+      timeline.render(trackStartTime, windowStart, windowEnd)
     if audioSample.playing
+      timeline.render(playbackTime, windowStart, windowEnd)
       if beatsClone.length > 0 and beatsClone[0] <= playbackTime
         #Beat!
         if metronomeAudioSample? and Session.get('click')
@@ -76,11 +77,11 @@ playTrack = ->
   requestAnimationFrame(update)
 
 updateSongPlace = (fractionThroughSong) ->
-  trackStartTime = sampleLengthSeconds * fractionThroughSong
-  timeline.render(trackStartTime, sampleLengthSeconds)
   if audioSample.playing
     audioSample.stop()
     Session.set 'playing', audioSample.playing
+  trackStartTime = windowStart + ((windowEnd - windowStart) * fractionThroughSong)
+  timeline.render(trackStartTime, windowStart, windowEnd)
 
 updateBeats = ->
   pAEC = Session.get 'previousAverageEnergyCoefficient'
@@ -103,17 +104,17 @@ updateBeats = ->
     nOPS = NUMBER_OF_PREVIOUS_SAMPLES
     Session.set 'numberOfPreviousSamples', nOPS
 
-  soundEnergyBeatDetector = new SoundEnergyBeatDetector()
-  [maximumEnergies, energies, averageEnergies, maxEnergy, bpm, convolution,
-   beats] = \
-    soundEnergyBeatDetector.detectBeats(pcmAudioData, pEVC, pAEC, sPIE,
-                                              nOPS)
-  Session.set 'bpm', bpm
-  beatsVisualisation.render(maximumEnergies, sampleLengthSeconds)
-  energiesVisualisation.render(energies, maxEnergy, sampleLengthSeconds)
-  averageEnergiesVisualisation.render(averageEnergies, maxEnergy,
-                                      sampleLengthSeconds)
-  convolutionVisualisation.render(convolution, sampleLengthSeconds)
+  beatDetector = new SoundEnergyBeatDetector()
+  beatDetector.detectBeats(pcmAudioData, pEVC, pAEC, sPIE, nOPS)
+  unless windowEnd?
+    windowEnd = sampleLengthSeconds
+  Session.set 'bpm', beatDetector.bpm
+  updateVisualisation()
+
+updateVisualisation = ->
+  beatDetectorVisualisation.render(beatDetector, windowStart,
+                                  windowEnd)
+  timeline.render(trackStartTime, windowStart, windowEnd)
 
 updateAudioFromPcmData = (_pcmAudioData) ->
   pcmAudioData = _pcmAudioData
@@ -121,6 +122,7 @@ updateAudioFromPcmData = (_pcmAudioData) ->
   waveformVisualisation = new WaveformVisualisation('#waveform', pcmAudioData)
   waveformVisualisation.render()
   updateBeats()
+
 
 updateAudioFromArrayBuffer = (arrayBuffer) ->
   Session.set 'hasPcmAudioData', false
@@ -146,14 +148,10 @@ updateAudioFromArrayBuffer = (arrayBuffer) ->
 
 Template.waveform.rendered = ->
   timeline = new Timeline('#timeline')
-  beatsVisualisation = new BeatsVisualisation('#beats')
-  energiesVisualisation = new EnergiesVisualisation('#energies')
-  averageEnergiesVisualisation = \
-      new AverageEnergiesVisulisation('#average-energies')
   beatVisualisation = new BeatVisualisation('#beat')
-  convolutionVisualisation = new ConvolutionVisualisation('#convolution')
+  beatDetectorVisualisation = new BeatDetectorVisualisation('#convolution')
   loadAudioFromUrl '/selfie-short.mp3', updateAudioFromArrayBuffer
-  loadAudioFromUrl '/metronome.wav', (arrayBuffer) ->
+  loadAudioFromUrl '/metronome.ogg', (arrayBuffer) ->
     audioContext = getAudioContext()
     metronomeAudioSample = new ArrayBufferAudioSample(arrayBuffer)
     metronomeAudioSample.loadAudio audioContext
@@ -193,6 +191,12 @@ Template.waveform.helpers
   clickChecked: ->
     'checked' if Session.get 'click'
 
+  zoom: ->
+    zoom = Session.get 'zoom'
+    unless zoom?
+      zoom = 1
+    zoom
+
 Template.waveform.events
   'click [name="play"]': (event) ->
     return unless audioSample?
@@ -219,7 +223,6 @@ Template.waveform.events
     Session.set 'previousAverageEnergyCoefficient', value
     updateBeats()
 
-
   'change [name="previous-energy-variance-coefficient"]': (event) ->
     value = $(event.target).val()
     Session.set 'previousEnergyVarianceCoefficient', value
@@ -244,4 +247,21 @@ Template.waveform.events
   'change [name="click"]': (event) ->
     value = $(event.target).prop('checked')
     Session.set 'click', value
+
+  'change [name="zoom"]': (event) ->
+    value = $(event.target).val()
+    Session.set 'zoom', value
+    window = (sampleLengthSeconds / value) / 2
+    windowStart = trackStartTime - window
+    if windowStart < 0
+      addition = -windowStart
+      windowStart = 0
+    else
+      addition = 0
+    windowEnd = trackStartTime + window + addition
+    if windowEnd > sampleLengthSeconds
+      addition = windowEnd - sampleLengthSeconds
+      windowEnd = sampleLengthSeconds
+      windowStart -= addition
+    updateVisualisation()
 

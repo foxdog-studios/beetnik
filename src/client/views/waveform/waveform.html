@@ -35,13 +35,16 @@
       click track
     </label>
   </div>
+  <div>
+    <label>
+      <input name="zoom" type="range" min="1" max="20" step="1" value="{{zoom}}">
+      {{zoom}} | Zoom
+    </label>
+  </div>
   <div class="clearfix"></div>
   <canvas id="beat"></canvas>
   <canvas id="waveform"></canvas>
-  <canvas id="energies"></canvas>
-  <canvas id="average-energies"></canvas>
   <canvas id="convolution"></canvas>
-  <canvas id="beats"></canvas>
   <canvas id="timeline"></canvas>
   {{#unless hasPcmAudioData}}
     {{> spinner}}

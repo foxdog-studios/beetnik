@@ -13,12 +13,12 @@ class @SoundEnergyBeatDetector
                 previousAverageEnergyCoefficient,
                 samplesPerInstantEnergy,
                 numberOfPreviousEnergies) ->
-    maximumEnergies = []
+    @maximumEnergies = []
     distanceInEnergyIndexBetweenBeats = []
     lastBeatIndex = 0
-    energies = []
+    @energies = []
     @averageEnergies = []
-    maxEnergy = 0
+    @maxEnergy = 0
 
     previousEnergies = []
 
@@ -34,14 +34,14 @@ class @SoundEnergyBeatDetector
       continue unless i % samplesPerInstantEnergy == 0
 
       # Keep track of the maximum instant energy in the audio data.
-      if instantEnergySum > maxEnergy
-        maxEnergy = instantEnergySum
+      if instantEnergySum > @maxEnergy
+        @maxEnergy = instantEnergySum
 
       # The current time in seconds we are at in the audio data.
       currentTimeSeconds = i / SAMPLE_RATE
 
       # Save the current instant energy
-      energies.push [currentTimeSeconds, instantEnergySum]
+      @energies.push [currentTimeSeconds, instantEnergySum]
 
       if previousEnergies.length < numberOfPreviousEnergies
         # We don't have enough instant energies yet to do the beat detection.
@@ -82,7 +82,7 @@ class @SoundEnergyBeatDetector
           distanceBetweenBeatIndexes = currentIndex - lastBeatIndex
           if distanceBetweenBeatIndexes > BEAT_MIN_DISTANCE_SAMPLES
             lastBeatIndex = currentIndex
-            maximumEnergies.push currentTimeSeconds
+            @maximumEnergies.push currentTimeSeconds
             distanceInEnergyIndexBetweenBeats.push distanceBetweenBeatIndexes
 
         # Remove oldest previous energy and replace it with the current
@@ -98,13 +98,11 @@ class @SoundEnergyBeatDetector
       # Reset the instant energy
       instantEnergySum = 0
 
-    [bpm, convolution, beats] = @_calculateTempo(
+    [meanCount, maxCountIndex] = @_calculateTempo(
                      distanceInEnergyIndexBetweenBeats,
                      numberOfPreviousEnergies,
                      samplesPerInstantEnergy)
-
-    [maximumEnergies, energies, @averageEnergies, maxEnergy, bpm,
-     convolution, beats]
+    @_calculateConvolution(meanCount, maxCountIndex)
 
   _calculateTempo: (distanceInEnergyIndexBetweenBeats,
                     numberOfPreviousEnergies,
@@ -153,11 +151,8 @@ class @SoundEnergyBeatDetector
         (maxCountIndex * maxCountSoFar + neighbourIndex * neighbourCount) \
         / divisor
 
-    bpm = 60 / (meanCount * (samplesPerInstantEnergy / SAMPLE_RATE))
-
-    [convolution, beats] = @_calculateConvolution(meanCount, maxCountIndex)
-
-    [bpm, convolution, beats]
+    @bpm = 60 / (meanCount * (samplesPerInstantEnergy / SAMPLE_RATE))
+    [meanCount, maxCountIndex]
 
   _calculateConvolution: (meanCount, maxCountIndex) ->
     impulseTrain = []
@@ -172,33 +167,33 @@ class @SoundEnergyBeatDetector
       espace += 1
 
     beatsConvolution = []
-    convolution = []
+    @convolution = []
     maxConv = 0
     maxConvIndex= 0
 
     for i in [0..@averageEnergies.length - IMPULSE_TRAIN_SIZE - 1]
       # init this here to zero
       beatsConvolution[i] = 0
-      convolution[i] = [@averageEnergies[i][0], 0]
+      @convolution[i] = [@averageEnergies[i][0], 0]
       for j in [0..IMPULSE_TRAIN_SIZE]
-        convolution[i][1] += @averageEnergies[i+j][1] * impulseTrain[j]
-      currentConv = Math.abs(convolution[i][1])
+        @convolution[i][1] += @averageEnergies[i+j][1] * impulseTrain[j]
+      currentConv = Math.abs(@convolution[i][1])
       if currentConv > maxConv
         maxConv = currentConv
         maxConvIndex = i
 
     # normalise
     ratio = 1 / maxConv
-    for conv in convolution
+    for conv in @convolution
       conv[1] *= ratio
 
-    searchForMaxInWindow = (offset) ->
+    searchForMaxInWindow = (offset) =>
       maxSoFar = 0
       maxIndex = offset
       for i in [offset-MAX_SEARCH_WINDOW_SIZE..offset+MAX_SEARCH_WINDOW_SIZE]
         continue if i < 0
-        break if i >= convolution.length
-        conv = convolution[i][1]
+        break if i >= @convolution.length
+        conv = @convolution[i][1]
         if conv > maxSoFar
           maxSoFar = conv
           maxIndex = i
@@ -210,8 +205,8 @@ class @SoundEnergyBeatDetector
 
     # We will search right from the prinicpal beat
     offsetIndexRight = maxConvIndex + maxCountIndex
-    while offsetIndexRight < convolution.length \
-        and convolution[offsetIndexRight][1] > 0
+    while offsetIndexRight < @convolution.length \
+        and @convolution[offsetIndexRight][1] > 0
       localMaxPosition = searchForMaxInWindow(offsetIndexRight)
       beatsConvolution[localMaxPosition] = 1
       offsetIndexRight = localMaxPosition + maxCountIndex
@@ -223,12 +218,10 @@ class @SoundEnergyBeatDetector
       beatsConvolution[localMaxPosition] = 1
       offsetIndexLeft = localMaxPosition - maxCountIndex
 
-    beats = []
+    @beats = []
     # Get the times for the beats, going through them in order, so the beat
     # timings will be sorted.
     for b, i in beatsConvolution
       if b > 0
-        beats.push convolution[i][0]
-
-    [convolution, beats]
+        @beats.push @convolution[i][0]
 
