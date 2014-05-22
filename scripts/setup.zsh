@@ -50,21 +50,26 @@ function install_meteorite_packages()
 
 function init_local()
 {
-    local config=$repo/local/config
-    local development=$config/development
+    local cfg=$repo/config
+    local dst=$cfg/development
+    local tpl=$cfg/template
 
-    mkdir --parents $development
-
-    local development_config=$development/meteor_settings.json
-    if [[ ! -e $development_config ]]; then
-        mkdir --parents $development
-        cp $repo/templates/meteor_settings.json $development
+    if [[ ! -d  $dst ]]; then
+        cp --recursive $tpl $dst
+        mkdir $dst/ssl
     fi
 
-    if [[ ! -e $config/default ]]; then
-        ln --force --symbolic $development:t $config/default
+    local fab=$dst/fabric.local.yaml
+
+    if [[ ! -f $fab ]]; then
+        print -- 'host:\n    password:' > $fab
     fi
 
+    local dft=$cfg/default
+
+    if [[ ! -h $dft ]]; then
+        $repo/scripts/config.zsh development
+    fi
 }
 
 

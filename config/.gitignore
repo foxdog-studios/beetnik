@@ -1,0 +1,12 @@
+# Ignore all configurations except the production configuration and the
+# configuration template.
+/*/
+!/production/
+!/template/
+
+# Ignore the symbolic link to the default configuration.
+/default
+
+# Ignore any additional local configuration files.
+*.local.*
+

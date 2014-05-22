@@ -8,7 +8,7 @@ repo=$(realpath -- ${0:h}/..)
 if (( $+METEOR_SETTINGS )); then
     METEOR_SETTINGS=$(realpath -- $METEOR_SETTINGS)
 else
-    METEOR_SETTINGS=$repo/local/config/default/meteor_settings.json
+    METEOR_SETTINGS=$repo/config/default/meteor_settings.json
 fi
 
 if [[ $# -eq 0 ]]; then

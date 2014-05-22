@@ -1,0 +1,11 @@
+host:
+  name: foxdogstudios.com
+server:
+  name: beetnik.foxdogstudios.com
+  names: beetnik.foxdogstudios.com beetnik.fds.im
+  port: 8081
+  user: nobody
+  deploy_type: reverse_proxy
+db:
+  name: beetnik
+
