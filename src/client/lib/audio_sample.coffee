@@ -23,7 +23,7 @@ class @AbstractAudioSample
       gainNode.gain.value = gain
     @source.connect gainNode
     gainNode.connect @_ctx.destination
-    @source.start 0, offset
+    @source.start 0
     @playing = true
 
   stop: ->

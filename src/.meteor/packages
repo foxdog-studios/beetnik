@@ -7,9 +7,10 @@ standard-app-packages
 autopublish
 insecure
 coffeescript
-iron-router
-bower
-spin
+iron:router
+mquandalle:bower
+sacha:spin
 less
 backbone
-bootstrap-3
+mrt:bootstrap-3
+
