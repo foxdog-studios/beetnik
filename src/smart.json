@@ -1,0 +1,8 @@
+{
+    "bower": {
+        "phaser": {
+            "source": "photonstorm/phaser",
+            "version": "2.0.3"
+        }
+    }
+}
