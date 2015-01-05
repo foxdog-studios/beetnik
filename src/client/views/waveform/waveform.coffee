@@ -156,6 +156,11 @@ Template.waveform.rendered = ->
     metronomeAudioSample = new ArrayBufferAudioSample(arrayBuffer)
     metronomeAudioSample.loadAudio audioContext
 
+  $(window).keydown (event) ->
+    # Try playing on spacebar of enter
+    if event.keyCode == 32 or event.keyCode == 13
+      event.preventDefault()
+      tryPlay()
 
 Template.waveform.helpers
   hasPcmAudioData: ->
@@ -203,12 +208,17 @@ Template.waveform.helpers
   advancedInterfaceChecked: ->
     'checked' if Session.get 'advancedInterface'
 
+tryPlay = ->
+  return unless audioSample?
+  playTrack()
+  Session.set 'playing', audioSample.playing
+
 Template.waveform.events
   'click [name="play"]': (event) ->
     event.preventDefault()
-    return unless audioSample?
-    playTrack()
-    Session.set 'playing', audioSample.playing
+    tryPlay()
+
+
 
   'change #file': (event) ->
     event.preventDefault()

@@ -1,14 +1,28 @@
 <template name="waveform">
+  <div style="position: relative; height: 300px">
+    <canvas id="beat"></canvas>
+    <canvas id="waveform"></canvas>
+    <canvas id="convolution"></canvas>
+    <canvas id="timeline"></canvas>
+  </div>
+
   <div class="row">
-    <div class="col-md-6">
-      {{> game}}
-    </div>
-    <div class="col-md-6">
+    <div class="col-sm-6">
+      <div>
+        <button class="btn btn-lg btn-info" name="play" {{disabled}}>
+          <span class="glyphicon glyphicon-{{playButtonText}}"></span>
+          {{playButtonText}}
+        </button>
+        {{bpm}} bpm
+      </div>
       <div>
         <label for="file">
           Input audio
         </label>
         <input type="file" id="file">
+        <p>
+          load your own songs (the shorter, the less squished the visualisation will be)
+        </p>
       </div>
       <div>
         <label>
@@ -38,15 +52,11 @@
         </div>
       {{/if}}
       <form class="form-inline">
-        <button class="btn btn-lg btn-info" name="play" {{disabled}}>
-          <span class="glyphicon glyphicon-{{playButtonText}}"></span>
-          {{playButtonText}}
-        </button>
-        {{bpm}} bpm
+
         <div class="checkbox">
           <label>
             <input type="checkbox" name="click" {{clickChecked}}/>
-            click track
+            click track (useful for hearing how out of time the beat is)
           </label>
         </div>
         <div class="form-group">
@@ -64,14 +74,32 @@
         </div>
       </form>
     </div>
-  </div>
+    <div class="col-sm-6">
+    {{#markdown}}
+## What's going on
 
-  <div class="clearfix"></div>
-  <canvas id="beat"></canvas>
-  <canvas id="waveform"></canvas>
-  <canvas id="convolution"></canvas>
-  <canvas id="timeline"></canvas>
+Beat detection using the web audio api
+
+It relies a lot of energy in the beat and a constant bpm, so works well with dance tracks.
+
+Try loading your own songs.
+
+## Interpreting the visualisation
+- White lines indicate where beats have been detected. Based off finding peaks in the convolution.
+- Green is the 'energy' of the track at that time
+- Magenta is the average energy of the number of previous samples
+- Cyan is the result of the convolution.
+- The background flashes green to the calculated bpm
+
+The gap at the beginning is where the buffer is being built.
+
+For fun here is another visualisation with characters jumping, use the arrow keys to move the dog
+    {{/markdown}}
+    {{> game}}
+    </div>
+  </div>
   {{#unless hasPcmAudioData}}
     {{> spinner}}
   {{/unless}}
+
 </template>

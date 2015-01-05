@@ -1,10 +1,18 @@
 <template name="home">
-  <h1>Beetnik</h1>
-  <p>
-    By <a href="http://foxdogstudios.com">Foxdog Studios</a>, <a href="https://github.com/foxdog-studios/beetnik">source on github</a>
-  </p>
-  <p>
-    Based on work by <a href="http://archive.gamedev.net/archive/reference/programming/features/beatdetection/index.html">Frederic Patin</a> and <a href="https://www.youtube.com/watch?v=jZoQ1S73Bac">barsichou</a>
-  </p>
+<div class="container-fluid">
+  <div class="row">
+    <div class="col-sm-6">
+      <h1>Beetnik - beat/bpm detection using web audio api</h1>
+    </div>
+    <div class="col-sm-6">
+      <p style="padding-top: 30px;">
+        By <a href="http://foxdogstudios.com">Foxdog Studios</a>, <a href="https://github.com/foxdog-studios/beetnik">source on github</a>
+      </p>
+      <p>
+        Based on work by <a href="http://archive.gamedev.net/archive/reference/programming/features/beatdetection/index.html">Frederic Patin</a> and <a href="https://www.youtube.com/watch?v=jZoQ1S73Bac">barsichou</a>
+      </p>
+    </div>
+  </div>
   {{> waveform}}
+</div>
 </template>
