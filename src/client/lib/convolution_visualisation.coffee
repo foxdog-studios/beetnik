@@ -19,31 +19,41 @@ class @BeatDetectorVisualisation
 
 
     # Maximum energies
-    @ctx.fillStyle = '#00FF00'
+    @ctx.fillStyle = '#00bc34'
     for [i, energy] in beatDetector.energies
       continue if i < start
       break if i > end
       @ctx.fillRect(getX(i), @cvs.height, 1, getY(energy))
 
     # Average energies
-    @ctx.fillStyle = 'rgba(255, 0, 255, 1)'
+    @ctx.fillStyle = 'rgba(255, 0, 255, 0.5)'
     for [i, energy] in beatDetector.averageEnergies
       @ctx.fillRect(getX(i), @cvs.height, 1, getY(energy))
 
-    # Convolution
-    @ctx.fillStyle = 'rgba(0, 255, 255, 1)'
-    for [i, conv] in beatDetector.convolution
-      continue if i < start
-      break if i > end
-      @ctx.fillRect(getX(i), @cvs.height, 1,
-                    -conv * @cvs.height / 2)
-
     # Maximum Energies
-    @ctx.fillStyle = '#FFFFFF'
+    @ctx.fillStyle = '#222'
     for beat in beatDetector.maximumEnergies
       continue if beat < start
       break if beat > end
       @ctx.fillRect(getX(beat), 0, 1, Math.round(@cvs.height / 12))
+
+    # Beats
+    @ctx.fillStyle = '#ff9045'
+    for beat in beatDetector.beats
+      continue if beat < start
+      break if beat > end
+      height = Math.round(@cvs.height / 12)
+      @ctx.fillRect(getX(beat) - 1, @cvs.height - height, 3, height)
+      @ctx.fillRect(getX(beat), @cvs.height - height - 3, 1, height + 3)
+
+    # Interpolated beats
+    @ctx.fillStyle = '#00ffff'
+    for beat in beatDetector.interpolatedBeats
+      continue if beat < start
+      break if beat > end
+      height = Math.round(@cvs.height / 12)
+      @ctx.fillRect(getX(beat), @cvs.height - height - 3, 1, height + 3)
+
 
 
 

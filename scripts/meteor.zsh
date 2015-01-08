@@ -18,5 +18,5 @@ else
 fi
 
 cd $repo/src
-exec mrt $args
+exec meteor $args
 

@@ -14,7 +14,7 @@ class @AbstractAudioSample
   loadAudio: ->
     throw 'Load Audio must be implemented by subclass'
 
-  tryPlay: (offset, gain) ->
+  tryPlay: (offset, gain, _when = 0) ->
     return unless @buffer?
     @source = @_ctx.createBufferSource()
     @source.buffer = @buffer
@@ -24,9 +24,9 @@ class @AbstractAudioSample
     @source.connect gainNode
     gainNode.connect @_ctx.destination
     if $.isNumeric(offset)
-      @source.start 0, offset
+      @source.start _when, offset
     else
-      @source.start 0
+      @source.start _when
     @playing = true
 
   stop: ->

@@ -1,5 +1,5 @@
 THRESHOLD_CONSTANT = 1.5
-VARIANCE_COEFFICIENT = 0
+VARIANCE_COEFFICIENT = 0.00002
 SAMPLES_PER_INSTANT_ENERGY = 1024
 NUMBER_OF_PREVIOUS_SAMPLES = 43
 
@@ -40,6 +40,8 @@ windowEnd = null
 playTrack = ->
   beatsClone = beatDetector.beats.slice(0)
 
+  metronomeClickHasBeenScheduled = false
+
   while beatsClone.length and beatsClone[0] < trackStartTime
     beatsClone.splice(0, 1)
 
@@ -62,15 +64,23 @@ playTrack = ->
       timeline.render(trackStartTime, windowStart, windowEnd)
     if audioSample.playing
       timeline.render(playbackTime, windowStart, windowEnd)
+      # Schedule metronome clicks so we they happen accurately
+      # see:
+      # http://www.html5rocks.com/en/tutorials/audio/scheduling/
+      if not metronomeClickHasBeenScheduled and \
+          metronomeAudioSample? and Session.get('click') \
+          and beatsClone.length > 0
+        nextBeatScheduleTime = audioContext.currentTime - playbackTime + beatsClone[0]
+        metronomeAudioSample.tryPlay(undefined, undefined, nextBeatScheduleTime)
+        metronomeClickHasBeenScheduled = true
       if beatsClone.length > 0 and beatsClone[0] <= playbackTime
         #Beat!
-        if metronomeAudioSample? and Session.get('click')
-          metronomeAudioSample.tryPlay()
         if beatsClone.length > 2
           beatTime = beatsClone[1] - beatsClone[0]
         gamePubSub.trigger 'beat', true, beatTime
         beatVisualisation.render(50)
         beatsClone.splice(0, 1)
+        metronomeClickHasBeenScheduled = false
       else
         gamePubSub.trigger 'beat', false
       requestAnimationFrame(update)
@@ -84,23 +94,23 @@ updateSongPlace = (fractionThroughSong) ->
   timeline.render(trackStartTime, windowStart, windowEnd)
 
 updateBeats = ->
-  pAEC = Session.get 'previousAverageEnergyCoefficient'
-  unless pAEC?
+  pAEC = parseFloat Session.get 'previousAverageEnergyCoefficient'
+  unless $.isNumeric pAEC
     pAEC = THRESHOLD_CONSTANT
     Session.set 'previousAverageEnergyCoefficient', pAEC
 
-  pEVC = Session.get 'previousEnergyVarianceCoefficient'
-  unless pEVC?
+  pEVC = parseFloat Session.get 'previousEnergyVarianceCoefficient'
+  unless $.isNumeric pEVC
     pEVC = VARIANCE_COEFFICIENT
     Session.set 'previousEnergyVarianceCoefficient', pEVC
 
-  sPIE = Session.get 'samplesPerInstantEnergy'
-  unless sPIE
+  sPIE = parseFloat Session.get 'samplesPerInstantEnergy'
+  unless $.isNumeric sPIE
     sPIE = SAMPLES_PER_INSTANT_ENERGY
     Session.set 'samplesPerInstantEnergy', sPIE
 
-  nOPS = Session.get 'numberOfPreviousSamples'
-  unless nOPS
+  nOPS = parseFloat Session.get 'numberOfPreviousSamples'
+  unless $.isNumeric nOPS
     nOPS = NUMBER_OF_PREVIOUS_SAMPLES
     Session.set 'numberOfPreviousSamples', nOPS
 
@@ -150,7 +160,7 @@ Template.waveform.rendered = ->
   timeline = new Timeline('#timeline')
   beatVisualisation = new BeatVisualisation('#beat')
   beatDetectorVisualisation = new BeatDetectorVisualisation('#convolution')
-  loadAudioFromUrl '/selfie-short.mp3', updateAudioFromArrayBuffer
+  loadAudioFromUrl '/millionaire.ogg', updateAudioFromArrayBuffer
   loadAudioFromUrl '/metronome.ogg', (arrayBuffer) ->
     audioContext = getAudioContext()
     metronomeAudioSample = new ArrayBufferAudioSample(arrayBuffer)
@@ -238,25 +248,25 @@ Template.waveform.events
 
   'change [name="previous-average-energy-coefficient"]': (event) ->
     event.preventDefault()
-    value = $(event.target).val()
+    value = parseFloat $(event.target).val()
     Session.set 'previousAverageEnergyCoefficient', value
     updateBeats()
 
   'change [name="previous-energy-variance-coefficient"]': (event) ->
     event.preventDefault()
-    value = $(event.target).val()
+    value = parseFloat $(event.target).val()
     Session.set 'previousEnergyVarianceCoefficient', value
     updateBeats()
 
   'change [name="samples-per-instant-energy"]': (event) ->
     event.preventDefault()
-    value = $(event.target).val()
+    value = parseFloat $(event.target).val()
     Session.set 'samplesPerInstantEnergy', value
     updateBeats()
 
   'change [name="number-of-previous-samples"]': (event) ->
     event.preventDefault()
-    value = $(event.target).val()
+    value = parseFloat $(event.target).val()
     Session.set 'numberOfPreviousSamples', value
     updateBeats()
 
