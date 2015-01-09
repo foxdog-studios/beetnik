@@ -1,7 +1,7 @@
 class @SoundEnergyBeatDetector
   SAMPLE_RATE = 44100
-  BEAT_MIN_DISTANCE_SAMPLES = 10
-  MAX_DISTANCE_MULTIPLIER = 2
+  BEAT_MIN_DISTANCE_SAMPLES = 10000
+  MAX_DISTANCE_MULTIPLIER = 4
 
   MAX_SEARCH_WINDOW_SIZE = 3
 
@@ -13,8 +13,9 @@ class @SoundEnergyBeatDetector
                 @_samplesPerInstantEnergy,
                 @_numberOfPreviousEnergies) ->
 
+    @_trackLength = pcmAudioData.length / SAMPLE_RATE
     @maximumEnergies = []
-    @_distanceInEnergyIndexBetweenBeats = []
+    @distanceInEnergyIndexBetweenBeats = []
     lastBeatIndex = 0
     @energies = []
     @averageEnergies = []
@@ -88,10 +89,11 @@ class @SoundEnergyBeatDetector
           # beat
           currentIndex = @averageEnergies.length - 1
           distanceBetweenBeatIndexes = currentIndex - lastBeatIndex
-          if distanceBetweenBeatIndexes > BEAT_MIN_DISTANCE_SAMPLES
+          minDistance = BEAT_MIN_DISTANCE_SAMPLES / @_samplesPerInstantEnergy
+          if distanceBetweenBeatIndexes > minDistance
             lastBeatIndex = currentIndex
             @maximumEnergies.push currentTimeSeconds
-            @_distanceInEnergyIndexBetweenBeats.push
+            @distanceInEnergyIndexBetweenBeats.push
               distance: distanceBetweenBeatIndexes
               energy: instantEnergySum
               index: currentIndex
@@ -122,61 +124,109 @@ class @SoundEnergyBeatDetector
       * MAX_DISTANCE_MULTIPLIER
 
     # These are buckets which we will use to count where the most beats landed
-    beatDistanceCounts = []
+    @beatDistanceCounts = []
 
     for i in [0..maxDistanceBetwenBeats]
-      beatDistanceCounts.push
+      @beatDistanceCounts.push
         count: 0
         beats: []
 
     # Fill the buckets, by counting the occurances of each distance betwee
     # the beats
-    for data in @_distanceInEnergyIndexBetweenBeats
+    for data in @distanceInEnergyIndexBetweenBeats
       distance = data.distance
       if distance < maxDistanceBetwenBeats
-        beatDistanceCounts[distance].count++
-        beatDistanceCounts[distance].beats.push data
+        @beatDistanceCounts[distance].count++
+        @beatDistanceCounts[distance].beats.push data
 
     @_maxCountIndex = 0
 
+    # Now we have them grouped in classes, we need to estimate the mode value
+    # using linear interpolation.
+    # More information and the formula are described here:
+    # http://mathforum.org/library/drmath/view/72977.html
+
+    weightedSum = 0
+    sum = 0
     # Find the index of the distance that occurs the most
     maxCountSoFar = 0
-    for beatDistanceCount, i in beatDistanceCounts
+    for beatDistanceCount, i in @beatDistanceCounts
+      weightedSum += i * beatDistanceCount.count
+      sum += beatDistanceCount.count
       if beatDistanceCount.count > maxCountSoFar
         maxCountSoFar = beatDistanceCount.count
         @_maxCountIndex = i
         @_principalBeat = beatDistanceCount
 
-    divisor = maxCountSoFar
+    console.log  weightedSum / sum
+
+    # Calculate the average index from the neighbour with highest number of
+    # occurances
+    if @_maxCountIndex == @beatDistanceCounts.length - 1
+      neighbourIndex = @_maxCountIndex - 1
+    else if @_maxCountIndex == 0
+      neighbourIndex = @_maxCountIndex + 1
+    else
+      a = @_maxCountIndex - 1
+      b = @_maxCountIndex + 1
+      if @beatDistanceCounts[a].count > @beatDistanceCounts[b].count
+        neighbourIndex = a
+      else
+        neighbourIndex = b
+
+    neighbourCount = @beatDistanceCounts[neighbourIndex].count
+    divisor = maxCountSoFar + neighbourCount
 
     if divisor == 0
       meanCount = 0
     else
-      meanCount = (@_maxCountIndex * maxCountSoFar) / divisor
+      meanCount = \
+        (@_maxCountIndex * maxCountSoFar + neighbourIndex * neighbourCount) \
+        / divisor
 
-    @bpm = 60 / (meanCount * (@_samplesPerInstantEnergy / SAMPLE_RATE))
+    console.log meanCount
+
+    @_meanCount = meanCount
+
+    @bpm = @distanceToBpm(meanCount)
 
   _removeOutOfTimeBeats: ->
     # Find the most energetic of the principal beats
-    maxMaximumEnergyIndex = 0
+    maximumEnergyIndex = 0
     maxMaximumEnergy = 0
-    for beat in @_principalBeat.beats
-      energy = @maximumEnergies[beat.maximumEnergiesIndex]
-      if energy > maxMaximumEnergy
-        maximumEnergiesIndex = beat.maximumEnergiesIndex
-        maxMaximumEnergy = energy
+    if @_principalBeat?
+      for beat in @_principalBeat.beats
+        if beat.energy > maxMaximumEnergy
+          maximumEnergiesIndex = beat.maximumEnergiesIndex
+          maxMaximumEnergy = beat.energy
 
-    @_maxEnergyDistance =  \
-      @_distanceInEnergyIndexBetweenBeats[maximumEnergiesIndex].distance
+    @principalBeatTime = @beats[maximumEnergiesIndex]
+
+    @_maxEnergyDistance = @_meanCount
 
     lowerBound = @_maxEnergyDistance - MAX_SEARCH_WINDOW_SIZE
     upperBound = @_maxEnergyDistance + MAX_SEARCH_WINDOW_SIZE
 
     indexesToRemove = []
     distanceSoFar = 0
-    distanceLength = @_distanceInEnergyIndexBetweenBeats.length - 1
+
+    # Removep to the left
+    for i in [maximumEnergiesIndex..0] by -1
+      energy = @distanceInEnergyIndexBetweenBeats[i]
+      distance = energy.distance + distanceSoFar
+      if distance < lowerBound or distance > upperBound
+        distanceSoFar += energy.distance
+        if distanceSoFar > upperBound
+          distanceSoFar = 0
+        indexesToRemove.splice 0, 0, i
+      else
+        distanceSoFar = 0
+
+    # Remove to the right
+    distanceSoFar = 0
+    distanceLength = @distanceInEnergyIndexBetweenBeats.length - 1
     for i in [0..distanceLength]
-      energy = @_distanceInEnergyIndexBetweenBeats[i]
+      energy = @distanceInEnergyIndexBetweenBeats[i]
       distance = energy.distance + distanceSoFar
       if distance < lowerBound or distance > upperBound
         distanceSoFar += energy.distance
@@ -190,15 +240,19 @@ class @SoundEnergyBeatDetector
       index = indexesToRemove[i]
       @beats.splice(index, 1)
 
+  distanceToTime: (distance) ->
+    secondsPerInstantEnegy = @_samplesPerInstantEnergy / SAMPLE_RATE
+    distance * secondsPerInstantEnegy
+
+  distanceToBpm: (distance) ->
+    60 / @distanceToTime(distance)
+
   _addBeatsInGaps: ->
     @interpolatedBeats = []
     # Interpolate beats in the gaps between existing ones.
-    secondsPerInstantEnegy = @_samplesPerInstantEnergy / SAMPLE_RATE
-    lowerBound = (@_maxEnergyDistance - MAX_SEARCH_WINDOW_SIZE) \
-      * secondsPerInstantEnegy
-    upperBound = (@_maxEnergyDistance + MAX_SEARCH_WINDOW_SIZE) \
-      * secondsPerInstantEnegy
-    meanLength = @_maxEnergyDistance * secondsPerInstantEnegy
+    lowerBound = @distanceToTime(@_maxEnergyDistance - MAX_SEARCH_WINDOW_SIZE)
+    upperBound = @distanceToTime(@_maxEnergyDistance + MAX_SEARCH_WINDOW_SIZE)
+    meanLength = @distanceToTime(@_maxEnergyDistance)
     beatsToInsert = []
     for i in [0..@beats.length - 2]
       beat = @beats[i]
@@ -206,10 +260,13 @@ class @SoundEnergyBeatDetector
       gap = nextBeat - beat
       continue if gap >= lowerBound and gap <= upperBound
       subdivisions = gap / meanLength
+      if subdivisions < 1
+        console.log subdivisions
+        subdivisions = 2
       newBeats = []
-      remainder = (subdivisions - Math.floor(subdivisions)) / subdivisions
-      for j in [1..Math.floor(subdivisions)]
-        newTime = beat + meanLength * j + meanLength * remainder
+      numberOfNewBeats = Math.round(subdivisions)
+      for j in [1..numberOfNewBeats]
+        newTime = beat + (gap / numberOfNewBeats) * j
         if nextBeat - lowerBound < newTime
           continue
         newBeats.push newTime
@@ -222,6 +279,21 @@ class @SoundEnergyBeatDetector
       for beat in b.beats
         @interpolatedBeats.push beat
       numberOfNewBeatsInserted += b.beats.length
+
+    # Add beats to the beginning
+    nextTime = @beats[0] - meanLength
+    while nextTime > 0
+      @beats.splice 0, 0, nextTime
+      @interpolatedBeats.splice 0, 0, nextTime
+      nextTime -= meanLength
+
+    # Add beats to the end
+    nextTime = @beats[@beats.length - 1] + meanLength
+    while nextTime < @_trackLength
+      @beats.push nextTime
+      @interpolatedBeats.push nextTime
+      nextTime += meanLength
+
 
 
 

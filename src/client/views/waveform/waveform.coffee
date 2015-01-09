@@ -30,6 +30,7 @@ metronomeAudioSample = null
 
 beatVisualisation = null
 beatDetectorVisualisation = null
+histogramVisutalisation = null
 
 sampleLengthSeconds = 0
 trackStartTime = 0
@@ -125,6 +126,7 @@ updateVisualisation = ->
   beatDetectorVisualisation.render(beatDetector, windowStart,
                                   windowEnd)
   timeline.render(trackStartTime, windowStart, windowEnd)
+  histogramVisutalisation.render(beatDetector)
 
 updateAudioFromPcmData = (_pcmAudioData) ->
   pcmAudioData = _pcmAudioData
@@ -160,6 +162,7 @@ Template.waveform.rendered = ->
   timeline = new Timeline('#timeline')
   beatVisualisation = new BeatVisualisation('#beat')
   beatDetectorVisualisation = new BeatDetectorVisualisation('#convolution')
+  histogramVisutalisation = new BeatDistanceCountHistogram('#histogram')
   loadAudioFromUrl '/millionaire.ogg', updateAudioFromArrayBuffer
   loadAudioFromUrl '/metronome.ogg', (arrayBuffer) ->
     audioContext = getAudioContext()

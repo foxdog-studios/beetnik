@@ -1,6 +1,7 @@
 class @BeatsVisualisation
   constructor: (selector) ->
     @cvs = $(selector)[0]
+
     @ctx = @cvs.getContext '2d'
     @cvs.width = $(@cvs).width()
 

@@ -6,6 +6,7 @@
     <canvas id="timeline"></canvas>
   </div>
 
+
   <div class="row">
     <div class="col-sm-6">
       <div>
@@ -36,7 +37,7 @@
           <label>
             {{previousEnergyVarianceCoefficient}} | Previous energy variance coefficient
           </label>
-          <input name="previous-energy-variance-coefficient" type="range" min="-0.0001" max="0.0001" step="0.00001" value="{{previousEnergyVarianceCoefficient}}">
+          <input name="previous-energy-variance-coefficient" type="range" min="-0.001" max="0.001" step="0.000001" value="{{previousEnergyVarianceCoefficient}}">
         </div>
         <div>
           <label>
@@ -73,9 +74,7 @@
           </label>
         </div>
       </form>
-    </div>
-    <div class="col-sm-6">
-    {{#markdown}}
+      {{#markdown}}
 ## What's going on
 
 Beat detection using the web audio api
@@ -94,8 +93,11 @@ Try loading your own songs.
 The gap at the beginning is where the buffer is being built.
 
 For fun here is another visualisation with characters jumping, use the arrow keys to move the dog
-    {{/markdown}}
-    {{> game}}
+      {{/markdown}}
+      {{> game}}
+    </div>
+    <div class="col-sm-6">
+      <canvas id="histogram"></canvas>
     </div>
   </div>
   {{#unless hasPcmAudioData}}

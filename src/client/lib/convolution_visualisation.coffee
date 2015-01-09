@@ -9,7 +9,7 @@ class @BeatDetectorVisualisation
 
     window = end - start
     pixelsPerSecond = @cvs.width / window
-    pixelsPerEnergy = @cvs.height / beatDetector.maxEnergy
+    pixelsPerEnergy = @cvs.height / 2 / beatDetector.maxEnergy
 
     getX = (seconds) ->
       Math.round((seconds - start) * pixelsPerSecond)
@@ -30,12 +30,7 @@ class @BeatDetectorVisualisation
     for [i, energy] in beatDetector.averageEnergies
       @ctx.fillRect(getX(i), @cvs.height, 1, getY(energy))
 
-    # Maximum Energies
-    @ctx.fillStyle = '#222'
-    for beat in beatDetector.maximumEnergies
-      continue if beat < start
-      break if beat > end
-      @ctx.fillRect(getX(beat), 0, 1, Math.round(@cvs.height / 12))
+
 
     # Beats
     @ctx.fillStyle = '#ff9045'
@@ -43,7 +38,6 @@ class @BeatDetectorVisualisation
       continue if beat < start
       break if beat > end
       height = Math.round(@cvs.height / 12)
-      @ctx.fillRect(getX(beat) - 1, @cvs.height - height, 3, height)
       @ctx.fillRect(getX(beat), @cvs.height - height - 3, 1, height + 3)
 
     # Interpolated beats
@@ -54,6 +48,20 @@ class @BeatDetectorVisualisation
       height = Math.round(@cvs.height / 12)
       @ctx.fillRect(getX(beat), @cvs.height - height - 3, 1, height + 3)
 
+    @ctx.fillStyle = '#ff0000'
+    height = Math.round(@cvs.height / 12) * 2
+    @ctx.fillRect(
+      getX(beatDetector.principalBeatTime),
+      @cvs.height - height,
+      1,
+      height
+    )
 
-
+    # Maximum Energies
+    @ctx.fillStyle = '#222'
+    for beat in beatDetector.maximumEnergies
+      continue if beat < start
+      break if beat > end
+      height = Math.round(@cvs.height / 12)
+      @ctx.fillRect(getX(beat), @cvs.height - height, 1, height)
 
