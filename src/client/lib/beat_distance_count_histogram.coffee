@@ -13,12 +13,17 @@ class @BeatDistanceCountHistogram
 
     histrogramCounts = []
 
+    skipZeroes = true
 
     maxCountSoFar = 0
     maxCountSoFarIndex = 0
 
     for beatDistanceCount, index in beatDetector.beatDistanceCounts
       count = beatDistanceCount.beats.length
+      if count > 0
+        skipZeroes = false
+      if skipZeroes
+        continue if count == 0
       if count > maxCountSoFar
         maxCountSoFar = count
         maxCountSoFarIndex = index

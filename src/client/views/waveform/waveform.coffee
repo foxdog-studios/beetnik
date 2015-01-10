@@ -1,7 +1,8 @@
-THRESHOLD_CONSTANT = 1.5
-VARIANCE_COEFFICIENT = 0.00002
-SAMPLES_PER_INSTANT_ENERGY = 1024
-NUMBER_OF_PREVIOUS_SAMPLES = 43
+THRESHOLD_CONSTANT = 6
+VARIANCE_COEFFICIENT = 0
+SAMPLES_PER_INSTANT_ENERGY = 300
+NUMBER_OF_PREVIOUS_SAMPLES = 42
+MAX_BPM = 253
 
 CHANNELS = 1
 SAMPLE_RATE = 44100
@@ -115,8 +116,13 @@ updateBeats = ->
     nOPS = NUMBER_OF_PREVIOUS_SAMPLES
     Session.set 'numberOfPreviousSamples', nOPS
 
+  maxBpm = parseFloat Session.get 'maxBpm'
+  unless $.isNumeric maxBpm
+    maxBpm = MAX_BPM
+    Session.set 'maxBpm', maxBpm
+
   beatDetector = new SoundEnergyBeatDetector()
-  beatDetector.detectBeats(pcmAudioData, pEVC, pAEC, sPIE, nOPS)
+  beatDetector.detectBeats(pcmAudioData, pEVC, pAEC, sPIE, nOPS, maxBpm)
   unless windowEnd?
     windowEnd = sampleLengthSeconds
   Session.set 'bpm', beatDetector.bpm
@@ -192,6 +198,9 @@ Template.waveform.helpers
   previousAverageEnergyCoefficient: ->
     Session.get 'previousAverageEnergyCoefficient'
 
+  maxBpm: ->
+    Session.get 'maxBpm'
+
   previousEnergyVarianceCoefficient: ->
     Session.get 'previousEnergyVarianceCoefficient'
 
@@ -253,6 +262,12 @@ Template.waveform.events
     event.preventDefault()
     value = parseFloat $(event.target).val()
     Session.set 'previousAverageEnergyCoefficient', value
+    updateBeats()
+
+  'change #max-bpm': (event) ->
+    event.preventDefault()
+    value = parseFloat $(event.target).val()
+    Session.set 'maxBpm', value
     updateBeats()
 
   'change [name="previous-energy-variance-coefficient"]': (event) ->

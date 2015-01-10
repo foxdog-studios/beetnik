@@ -27,10 +27,16 @@
       </div>
       <div>
         <label>
-          Previous average energy coefficient | {{previousAverageEnergyCoefficient}}
+          Beat sensitivity (Previous average energy coefficient) | {{previousAverageEnergyCoefficient}}
         </label>
-        <input name="previous-average-energy-coefficient" type="range" min="0" max="3" step="0.1" value="{{previousAverageEnergyCoefficient}}">
+        <input name="previous-average-energy-coefficient" type="range" min="0" max="6" step="0.1" value="{{previousAverageEnergyCoefficient}}">
         <p>This acts like a threshold, requiring a bigger change in energy to trigger a beat</p>
+      </div>
+      <div>
+        <label>
+          Max bpm | {{maxBpm}}bpm
+        </label>
+        <input id="max-bpm" type="range" min="60" max="300" step="1" value="{{maxBpm}}">
       </div>
       {{#if advancedInterface}}
         <div>

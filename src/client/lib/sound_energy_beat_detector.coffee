@@ -1,21 +1,46 @@
 class @SoundEnergyBeatDetector
   SAMPLE_RATE = 44100
   BEAT_MIN_DISTANCE_SAMPLES = 10000
-  MAX_DISTANCE_MULTIPLIER = 4
+  MAX_DISTANCE_MULTIPLIER = 32
+  MAX_BPM_DETECTED = 300
 
   MAX_SEARCH_WINDOW_SIZE = 3
+  MINIMUM_THRESHOLD = 1
 
   constructor: ->
 
   detectBeats: (pcmAudioData,
                 previousEnergyVarianceCoefficient,
-                previousAverageEnergyCoefficient,
+                @_previousAverageEnergyCoefficient,
                 @_samplesPerInstantEnergy,
-                @_numberOfPreviousEnergies) ->
+                @_numberOfPreviousEnergies,
+                @_maxBpm) ->
+
 
     @_trackLength = pcmAudioData.length / SAMPLE_RATE
+
     @maximumEnergies = []
+
+
+    @_beatMinDistanceSamples = @bpmToDistance(@_maxBpm)
+
+    @_findBeats(pcmAudioData)
+    @_previousAverageEnergyCoefficient -= 0.1
+    while @maximumEnergies.length < @_trackLength \
+        and @_previousAverageEnergyCoefficient > MINIMUM_THRESHOLD
+      @_previousAverageEnergyCoefficient -= 0.1
+      @_findBeats(pcmAudioData)
+
+    @_calculateTempo()
+
+    @beats = @maximumEnergies.slice(0)
+    @_removeOutOfTimeBeats()
+    @_addBeatsInGaps()
+
+  _findBeats: (pcmAudioData) ->
+    previousEnergies = []
     @distanceInEnergyIndexBetweenBeats = []
+    @maximumEnergies = []
     lastBeatIndex = 0
     @energies = []
     @averageEnergies = []
@@ -24,14 +49,8 @@ class @SoundEnergyBeatDetector
     @_maxBeatIndex = 0
     @_maxBeatValue = 0
 
-    @variances = []
-
-    previousEnergies = []
-
     previousEnergiesIndex = 0
-
     instantEnergySum = 0
-
     for pcm, i in pcmAudioData
 
       # Keep track of the current sum of square samples.
@@ -60,23 +79,9 @@ class @SoundEnergyBeatDetector
         previousEnergiesAverage = \
             previousEnergiesSum / previousEnergies.length
 
-        # Calulate the variance (average deviation from the mean) in the
-        # previous energies.
-        sumOfDifferencesFromAverage = 0
-        for previousEnergy in previousEnergies
-          difference = previousEnergy - previousEnergiesAverage
-          sumOfDifferencesFromAverage += difference * difference
-        previousEnergiesVariance = \
-            sumOfDifferencesFromAverage / previousEnergies.length
-
-        # Save our variance
-        @variances.push [currentTimeSeconds, previousEnergiesVariance]
-
         # Calculate the threshold the current instant energy must be above
         # to be a potential candidate for a beat.
-        v = previousEnergiesVariance * previousEnergyVarianceCoefficient
-        c = v + previousAverageEnergyCoefficient
-        threshold = c * previousEnergiesAverage
+        threshold = @_previousAverageEnergyCoefficient * previousEnergiesAverage
 
         # Save the threshold
         @averageEnergies.push [currentTimeSeconds, threshold]
@@ -89,7 +94,7 @@ class @SoundEnergyBeatDetector
           # beat
           currentIndex = @averageEnergies.length - 1
           distanceBetweenBeatIndexes = currentIndex - lastBeatIndex
-          minDistance = BEAT_MIN_DISTANCE_SAMPLES / @_samplesPerInstantEnergy
+          minDistance = @_beatMinDistanceSamples
           if distanceBetweenBeatIndexes > minDistance
             lastBeatIndex = currentIndex
             @maximumEnergies.push currentTimeSeconds
@@ -112,12 +117,6 @@ class @SoundEnergyBeatDetector
       # Reset the instant energy
       instantEnergySum = 0
 
-    @_calculateTempo()
-
-    @beats = @maximumEnergies.slice(0)
-    @_removeOutOfTimeBeats()
-    @_addBeatsInGaps()
-
 
   _calculateTempo: ->
     maxDistanceBetwenBeats = @_numberOfPreviousEnergies \
@@ -135,7 +134,12 @@ class @SoundEnergyBeatDetector
     # the beats
     for data in @distanceInEnergyIndexBetweenBeats
       distance = data.distance
+      distanceBpm = @distanceToBpm(distance)
       if distance < maxDistanceBetwenBeats
+        if distanceBpm > @_maxBpm
+          distance *= 2
+        else if distanceBpm < 80
+          distance = Math.floor(distance / 2)
         @beatDistanceCounts[distance].count++
         @beatDistanceCounts[distance].beats.push data
 
@@ -145,50 +149,45 @@ class @SoundEnergyBeatDetector
     # using linear interpolation.
     # More information and the formula are described here:
     # http://mathforum.org/library/drmath/view/72977.html
+    #
+    # We assume that the bpm of the class is in the middle.
 
-    weightedSum = 0
-    sum = 0
     # Find the index of the distance that occurs the most
     maxCountSoFar = 0
     for beatDistanceCount, i in @beatDistanceCounts
-      weightedSum += i * beatDistanceCount.count
-      sum += beatDistanceCount.count
       if beatDistanceCount.count > maxCountSoFar
         maxCountSoFar = beatDistanceCount.count
         @_maxCountIndex = i
         @_principalBeat = beatDistanceCount
 
-    console.log  weightedSum / sum
+    middleOfModalClass = @distanceToBpm(@_maxCountIndex)
+    middleOfClassAboveModalClass = @distanceToBpm(@_maxCountIndex - 1)
+    middleOfClassBelowModalClass = @distanceToBpm(@_maxCountIndex + 1)
+    upperBoundOfModalClass = middleOfClassAboveModalClass - \
+      (middleOfClassAboveModalClass - middleOfModalClass) / 2
+    lowerBoundOfModalClass = middleOfClassBelowModalClass + \
+      (middleOfModalClass - middleOfClassBelowModalClass) / 2
 
-    # Calculate the average index from the neighbour with highest number of
-    # occurances
-    if @_maxCountIndex == @beatDistanceCounts.length - 1
-      neighbourIndex = @_maxCountIndex - 1
-    else if @_maxCountIndex == 0
-      neighbourIndex = @_maxCountIndex + 1
+    widthOfModalClass = upperBoundOfModalClass - lowerBoundOfModalClass
+
+    classBelowModalClass = @beatDistanceCounts[@_maxCountIndex + 1]
+    if classBelowModalClass?
+      frequencyOfClassBellowModalClass = classBelowModalClass.count
     else
-      a = @_maxCountIndex - 1
-      b = @_maxCountIndex + 1
-      if @beatDistanceCounts[a].count > @beatDistanceCounts[b].count
-        neighbourIndex = a
-      else
-        neighbourIndex = b
+      frequencyOfClassBellowModalClass = 0
 
-    neighbourCount = @beatDistanceCounts[neighbourIndex].count
-    divisor = maxCountSoFar + neighbourCount
-
-    if divisor == 0
-      meanCount = 0
+    classAboveModalClass = @beatDistanceCounts[@_maxCountIndex - 1]
+    if classAboveModalClass?
+      frequencyOfClassAboveModalClass = classAboveModalClass.count
     else
-      meanCount = \
-        (@_maxCountIndex * maxCountSoFar + neighbourIndex * neighbourCount) \
-        / divisor
+      frequencyOfClassAboveModalClass = 0
+    d1 = maxCountSoFar - frequencyOfClassBellowModalClass
+    d2 = maxCountSoFar - frequencyOfClassAboveModalClass
+    mode = lowerBoundOfModalClass + (d1 / (d1 + d2)) * widthOfModalClass
 
-    console.log meanCount
+    @_meanCount = @bpmToDistance(mode)
 
-    @_meanCount = meanCount
-
-    @bpm = @distanceToBpm(meanCount)
+    @bpm = mode
 
   _removeOutOfTimeBeats: ->
     # Find the most energetic of the principal beats
@@ -211,16 +210,17 @@ class @SoundEnergyBeatDetector
     distanceSoFar = 0
 
     # Removep to the left
-    for i in [maximumEnergiesIndex..0] by -1
-      energy = @distanceInEnergyIndexBetweenBeats[i]
-      distance = energy.distance + distanceSoFar
-      if distance < lowerBound or distance > upperBound
-        distanceSoFar += energy.distance
-        if distanceSoFar > upperBound
+    if maximumEnergyIndex > 0
+      for i in [maximumEnergiesIndex..0] by -1
+        energy = @distanceInEnergyIndexBetweenBeats[i]
+        distance = energy.distance + distanceSoFar
+        if distance < lowerBound or distance > upperBound
+          distanceSoFar += energy.distance
+          if distanceSoFar > upperBound
+            distanceSoFar = 0
+          indexesToRemove.splice 0, 0, i
+        else
           distanceSoFar = 0
-        indexesToRemove.splice 0, 0, i
-      else
-        distanceSoFar = 0
 
     # Remove to the right
     distanceSoFar = 0
@@ -240,12 +240,18 @@ class @SoundEnergyBeatDetector
       index = indexesToRemove[i]
       @beats.splice(index, 1)
 
+  _getSecondsPerInstantEnergy: ->
+    @_samplesPerInstantEnergy / SAMPLE_RATE
+
   distanceToTime: (distance) ->
-    secondsPerInstantEnegy = @_samplesPerInstantEnergy / SAMPLE_RATE
+    secondsPerInstantEnegy = @_getSecondsPerInstantEnergy()
     distance * secondsPerInstantEnegy
 
   distanceToBpm: (distance) ->
     60 / @distanceToTime(distance)
+
+  bpmToDistance: (bpm) ->
+    60 / bpm / @_getSecondsPerInstantEnergy()
 
   _addBeatsInGaps: ->
     @interpolatedBeats = []
@@ -261,7 +267,6 @@ class @SoundEnergyBeatDetector
       continue if gap >= lowerBound and gap <= upperBound
       subdivisions = gap / meanLength
       if subdivisions < 1
-        console.log subdivisions
         subdivisions = 2
       newBeats = []
       numberOfNewBeats = Math.round(subdivisions)

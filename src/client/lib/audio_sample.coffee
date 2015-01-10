@@ -18,16 +18,21 @@ class @AbstractAudioSample
     return unless @buffer?
     @source = @_ctx.createBufferSource()
     @source.buffer = @buffer
+
     gainNode = @_ctx.createGain()
     if gain?
       gainNode.gain.value = gain
     @source.connect gainNode
-    gainNode.connect @_ctx.destination
+    unless @_destination
+      @_destination = @_ctx.destination
+    gainNode.connect @_destination
     if $.isNumeric(offset)
       @source.start _when, offset
     else
       @source.start _when
     @playing = true
+
+  connect: (@_destination) ->
 
   stop: ->
     return unless @source?
